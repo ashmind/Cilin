@@ -36,21 +36,14 @@ namespace Cilin.Internal.Reflection {
             _invoke = invoke;
         }
 
-        public override MethodAttributes Attributes {
-            get { return _attributes; }
-        }
-
-        public override Type DeclaringType {
-            get { return _declaringType; }
-        }
+        public override MethodAttributes Attributes => _attributes;
+        public override Type DeclaringType => _declaringType;
 
         public override RuntimeMethodHandle MethodHandle {
             get { return Delegator.GetMethod(this).MethodHandle; }
         }
 
-        public override string Name {
-            get { return _name; }
-        }
+        public override string Name => _name;
 
         public override Type ReflectedType {
             get {

@@ -119,9 +119,7 @@ namespace Cilin.Internal {
             return Array.CreateInstance(arrayType.GetElementType(), length);
         }
 
-        public static IEnumerable<TypeReference> GetArrayInterfaces(ArrayType arrayType) {
-            var elementType = arrayType.GetElementType();
-
+        public static IEnumerable<TypeReference> GetArrayInterfaces(TypeReference elementType) {
             yield return References.IEnumerable;
             yield return References.ICollection;
             yield return References.IList;

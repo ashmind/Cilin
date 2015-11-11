@@ -7,6 +7,8 @@ using System.Threading.Tasks;
 
 namespace Cilin.Internal.Reflection {
     public class ErasedWrapperType : TypeDelegator, INonRuntimeType {
+        private Type[] _genericArguments;
+
         public ErasedWrapperType(Type runtimeType, InterpretedType fullType) : base(runtimeType) {
             RuntimeType = runtimeType;
             FullType = fullType;
@@ -14,6 +16,27 @@ namespace Cilin.Internal.Reflection {
 
         public Type RuntimeType { get; }
         public InterpretedType FullType { get; }
+
+        public override Type[] GetGenericArguments() {
+            if (_genericArguments == null) {
+                var erasedArguments = RuntimeType.GetGenericArguments();
+                var fullArguments = FullType.GetGenericArguments();
+                var genericArguments = new Type[erasedArguments.Length];
+                for (int i = 0; i < erasedArguments.Length; i++) {
+                    var full = fullArguments[i];
+                    var erased = erasedArguments[i];
+                    if (full is ErasedWrapperType || full == erased) {
+                        genericArguments[i] = full;
+                        continue;
+                    }
+
+                    genericArguments[i] = new ErasedWrapperType(erased, (InterpretedType)full);
+                }
+                _genericArguments = genericArguments;
+            }
+
+            return _genericArguments;
+        }
 
         protected override ConstructorInfo GetConstructorImpl(BindingFlags bindingAttr, Binder binder, CallingConventions callConvention, Type[] types, ParameterModifier[] modifiers) {
             return RewriteConstructor(base.GetConstructorImpl(bindingAttr, binder, callConvention, types, modifiers));

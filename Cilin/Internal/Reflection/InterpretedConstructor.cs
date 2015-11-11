@@ -12,35 +12,26 @@ using MethodAttributes = System.Reflection.MethodAttributes;
 
 namespace Cilin.Internal.Reflection {
     public class InterpretedConstructor : ConstructorInfo {
-        private readonly MethodDefinition _definition;
-        private readonly Lazy<ParameterInfo[]> _parameters;
-        private readonly Interpreter _interpreter;
         private readonly InterpretedType _declaringType;
-        private readonly Resolver _resolver;
+        private readonly ParameterInfo[] _parameters;
+        private readonly MethodAttributes _attributes;
+        private readonly Func<object, object[], object> _invoke;
 
-        public InterpretedConstructor(MethodDefinition definition, InterpretedType declaringType, Interpreter interpreter, Resolver resolver) {
-            _definition = definition;
-            _interpreter = interpreter;
-            //_parameters = new Lazy<ParameterInfo[]>(() => {
-            //    if (!definition.HasParameters)
-            //        return Empty<ParameterInfo>.Array;
-
-            //    return definition.Parameters
-            //        .Select(p => _resolver.Parameter(p))
-            //        .ToArray();
-            //});
+        public InterpretedConstructor(
+            InterpretedType declaringType,
+            ParameterInfo[] parameters,
+            MethodAttributes attributes,
+            Func<object, object[], object> invoke
+        ) {
             _declaringType = declaringType;
-            _resolver = resolver;
+            _parameters = parameters;
+            _attributes = attributes;
+            _invoke = invoke;
         }
 
-        public override MethodAttributes Attributes {
-            get { return (MethodAttributes)_definition.Attributes; }
-        }
-
-        public override Type DeclaringType {
-            get { return _declaringType; }
-        }
-
+        public override MethodAttributes Attributes => _attributes;
+        public override Type DeclaringType => _declaringType;
+        
         public override RuntimeMethodHandle MethodHandle {
             get {
                 throw new NotImplementedException();
@@ -71,9 +62,7 @@ namespace Cilin.Internal.Reflection {
             throw new NotImplementedException();
         }
 
-        public override ParameterInfo[] GetParameters() {
-            return _parameters.Value;
-        }
+        public override ParameterInfo[] GetParameters() => _parameters;
 
         public override object Invoke(BindingFlags invokeAttr, Binder binder, object[] parameters, CultureInfo culture) {
             var instance = !IsStatic ? new CilinObject(_declaringType) : null;
@@ -85,10 +74,7 @@ namespace Cilin.Internal.Reflection {
             if (!IsStatic)
                 ((InterpretedType)DeclaringType).EnsureStaticConstructorRun();
 
-            var declaringTypeArguments = /*(_declaringType.ToTypeReference() as GenericInstanceType)?.GenericArguments.ToArray()
-                                      ??*/ Empty<TypeReference>.Array;
-            _interpreter.InterpretCall(declaringTypeArguments, _definition, Empty<TypeReference>.Array, obj, parameters);
-            return null;
+            return _invoke(obj, parameters);
         }
 
         public override bool IsDefined(Type attributeType, bool inherit) {

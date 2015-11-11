@@ -12,11 +12,13 @@ using Mono.Cecil;
 
 namespace Cilin.Internal {
     public class Resolver {
+        private static readonly Lazy<Type> LazyTypeNull = new Lazy<Type>(() => null);
+        private static readonly Lazy<Type> LazyTypeArray = new Lazy<Type>(() => typeof(Array));
+
         private static readonly MemberReferenceEqualityComparer ReferenceComparer = new MemberReferenceEqualityComparer();
 
         private readonly IDictionary<string, Assembly> _assemblyCache = new Dictionary<string, Assembly>();
         private readonly IDictionary<MemberReference, MemberInfo> _memberInfoCache = new Dictionary<MemberReference, MemberInfo>(ReferenceComparer);
-        private readonly IDictionary<TypeReference, TypeReference> _normalizationCache = new Dictionary<TypeReference, TypeReference>(ReferenceComparer);
 
         private static readonly TypeReference ObjectDataReference = 
             ModuleDefinition.ReadModule(typeof(CilinObject).Assembly.Location).GetType(typeof(CilinObject).FullName);
@@ -28,6 +30,7 @@ namespace Cilin.Internal {
         }
 
         public Assembly Assembly(AssemblyDefinition assembly) {
+            Argument.NotNull(nameof(assembly), assembly);
             return _assemblyCache.GetOrAdd(assembly.Name.Name, _ => {
                 if (ShouldBeRuntime(assembly))
                     return typeof(object).Assembly; // TODO
@@ -37,9 +40,15 @@ namespace Cilin.Internal {
         }
 
         public Type Type(TypeReference reference, GenericScope genericScope) {
-            return (Type)_memberInfoCache.GetOrAdd(reference, r => {
-                return TypeUncached((TypeReference)r, genericScope);
-            });
+            Argument.NotNull(nameof(reference), reference);
+
+            MemberInfo cached;
+            if (_memberInfoCache.TryGetValue(reference, out cached))
+                return (Type)cached;
+
+            var type = TypeUncached(reference, genericScope);
+            _memberInfoCache.Add(reference, type);
+            return type;
         }
 
         private Type TypeUncached(TypeReference reference, GenericScope genericScope) {
@@ -55,7 +64,7 @@ namespace Cilin.Internal {
 
                 return new ErasedWrapperType(
                     typeof(CilinObject).MakeArrayType(),
-                    NewIntepretedArrayType(elementType)
+                    NewIntepretedArrayType(reference.GetElementType(), elementType, genericScope)
                 );
             }
 
@@ -122,7 +131,7 @@ namespace Cilin.Internal {
                 definition.Name,
                 definition.Namespace,
                 Assembly(definition.Module.Assembly),
-                new Lazy<Type>(() => Type(definition.DeclaringType, genericScope)),
+                definition.DeclaringType != null ? new Lazy<Type>(() => Type(definition.DeclaringType, genericScope)) : LazyTypeNull,
                 new Lazy<Type>(() => Type(definition.BaseType, genericScope)),
                 new Lazy<Type[]>(() => definition.Interfaces.Select(i => Type(i, genericScope)).ToArray()),
                 null,
@@ -132,11 +141,23 @@ namespace Cilin.Internal {
             );
         }
         
-        private InterpretedType NewIntepretedArrayType(Type elementType) {
-            throw new NotImplementedException();
+        private InterpretedType NewIntepretedArrayType(TypeReference elementTypeReference, Type elementType, GenericScope genericScope) {
+            return new InterpretedType(
+                elementType.Name + "[]",
+                elementType.Namespace,
+                elementType.Assembly,
+                LazyTypeNull,
+                LazyTypeArray,
+                new Lazy<Type[]>(() => TypeSupport.GetArrayInterfaces(elementTypeReference).Select(i => Type(i, genericScope)).ToArray()),
+                null,
+                new LazyMember[0],
+                typeof(Array).Attributes,
+                null
+            );
         }
 
         public FieldInfo Field(FieldReference reference, GenericScope genericScope = null) {
+            Argument.NotNull(nameof(reference), reference);
             return (FieldInfo)_memberInfoCache.GetOrAdd(reference, r => FieldUncached((FieldReference)r, genericScope));
         }
 
@@ -158,9 +179,11 @@ namespace Cilin.Internal {
         }
         
         public MethodBase Method(MethodReference reference, GenericScope genericScope) {
-            MemberInfo result;
-            if (_memberInfoCache.TryGetValue(reference, out result))
-                return (MethodBase)result;
+            Argument.NotNull(nameof(reference), reference);
+
+            MemberInfo cached;
+            if (_memberInfoCache.TryGetValue(reference, out cached))
+                return (MethodBase)cached;
 
             var method = MethodUncached(reference, genericScope);
             _memberInfoCache.Add(reference, method);
@@ -214,7 +237,7 @@ namespace Cilin.Internal {
                 return _interpreter.InterpretCall(interpretedType.GetGenericArguments(), definition, typeArguments, target, arguments);
             };
             if (definition.IsConstructor)
-                return new InterpretedConstructor(definition, interpretedType, _interpreter, this);
+                return new InterpretedConstructor(interpretedType, parameters, attributes, invoke);
 
             var returnType = Type(reference.ReturnType, genericScope);
             return new InterpretedMethod(interpretedType, reference.Name, returnType, parameters, attributes, invoke);
