@@ -49,7 +49,7 @@ namespace Cilin.Tests.Helpers {
 
         private TypeDefinition ResolveType(Type type, IDictionary<string, ModuleDefinition> modules) {
             var module = modules.GetOrAdd(type.Module.FullyQualifiedName, name => ModuleDefinition.ReadModule(name));
-            return module.Types.Single(t => t.MetadataToken.ToInt32() == TestMethod.DeclaringType.MetadataToken);
+            return module.Types.Single(t => t.MetadataToken.ToInt32() == type.MetadataToken);
         }
     }
 }

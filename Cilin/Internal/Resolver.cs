@@ -29,7 +29,7 @@ namespace Cilin.Internal {
 
         public Assembly Assembly(AssemblyDefinition assembly) {
             return _assemblyCache.GetOrAdd(assembly.Name.Name, _ => {
-                if (!ShouldInterpret(assembly))
+                if (ShouldBeRuntime(assembly))
                     return typeof(object).Assembly; // TODO
 
                 return new InterpretedAssembly(assembly);
@@ -43,31 +43,51 @@ namespace Cilin.Internal {
         }
 
         private Type TypeUncached(TypeReference reference, GenericScope genericScope) {
-            //var normalized = Normalize(reference, genericScope);
-            //if (!ReferenceComparer.Equals(normalized, reference))
-            //    return Type(normalized, genericScope);
-
             var parameter = reference as GenericParameter;
             if (reference is GenericParameter)
                 return genericScope.Resolve(parameter) ?? new Reflection.GenericParameterType(reference.Name);
 
             var definition = reference.Resolve();
             if (reference.IsArray) {
-                var interpreted = new InterpretedType(reference, definition, _interpreter, this);
-                if (!ShouldInterpret(definition, reference))
-                    return new ErasedWrapperType(typeof(CilinObject).MakeArrayType(), interpreted);
+                var elementType = Type(reference.GetElementType(), genericScope);
+                if (IsRuntime(elementType))
+                    return elementType.MakeArrayType();
 
-                return interpreted;
+                return new ErasedWrapperType(
+                    typeof(CilinObject).MakeArrayType(),
+                    NewIntepretedArrayType(elementType)
+                );
             }
-            
-            if (!ShouldInterpret(definition, reference)) {
-                var erased = EraseInterpretedTypes(reference, definition);
-                if (erased != reference) {
-                    var fullType = new InterpretedType(reference, definition, _interpreter, this);
-                    return new ErasedWrapperType(Type(erased, genericScope), fullType);
+
+            var generic = reference as GenericInstanceType;
+            if (generic != null) {
+                var genericDefinition = Type(definition, genericScope);
+
+                var arguments = new Type[generic.GenericArguments.Count];
+                bool allArgumentsAreRuntime = false;
+                for (var i = 0; i < generic.GenericArguments.Count; i++) {
+                    var resolved = Type(generic.GenericArguments[i], genericScope);
+                    allArgumentsAreRuntime = allArgumentsAreRuntime && IsRuntime(resolved);
+                    arguments[i] = resolved;
                 }
 
-                var fullName = TypeSupport.GetFullName(erased);
+                if (IsRuntime(genericDefinition)) {
+                    if (allArgumentsAreRuntime)
+                        return genericDefinition.MakeGenericType(arguments);
+
+                    var erased = new Type[arguments.Length];
+                    for (var i = 0; i < arguments.Length; i++) {
+                        erased[i] = IsRuntime(arguments[i]) ? arguments[i] : typeof(CilinObject);
+                    }
+                    var erasedFull = genericDefinition.MakeGenericType(erased);
+                    return new ErasedWrapperType(erasedFull, NewInterpretedType(definition, genericScope, arguments));
+                }
+
+                return NewInterpretedType(definition, genericScope, arguments);
+            }
+
+            if (ShouldBeRuntime(definition, reference)) {
+                var fullName = TypeSupport.GetFullName(reference);
                 try {
                     return System.Type.GetType(fullName + ", " + definition.Module.Assembly.Name, true);
                 }
@@ -76,75 +96,44 @@ namespace Cilin.Internal {
                 }
             }
 
-            return new InterpretedType(reference, definition, _interpreter, this);
+            return NewInterpretedType(definition, genericScope);
         }
 
-        //private TypeReference Normalize(TypeReference reference, GenericScope genericScope) {
-        //    return _normalizationCache.GetOrAdd(reference, r => NormalizeUncached(reference, genericScope));
-        //}
-
-        //private TypeReference NormalizeUncached(TypeReference reference, GenericScope genericScope) {
-        //    if (reference.IsArray) {
-        //        var elementType = reference.GetElementType();
-        //        var newElementType = Normalize(reference.GetElementType(), genericScope);
-        //        if (ReferenceComparer.Equals(newElementType, elementType))
-        //            return reference;
-
-        //        return new ArrayType(newElementType);
-        //    }
-
-        //    var parameter = reference as GenericParameter;
-        //    if (parameter != null) {
-        //        if (genericScope == null)
-        //            throw new Exception($"Generic scope is required to resolve type {parameter}.");
-
-        //        return genericScope.Resolve(parameter);
-        //    }
-
-        //    var generic = reference as GenericInstanceType;
-        //    if (generic != null) {
-        //        var newGeneric = new GenericInstanceType(generic.GetElementType());
-        //        foreach (var argument in generic.GenericArguments) {
-        //            var newArgument = Normalize(argument, genericScope);
-        //            newGeneric.GenericArguments.Add(newArgument);
-        //        }
-        //        if (ReferenceComparer.Equals(newGeneric, generic))
-        //            return generic;
-
-        //        return newGeneric;
-        //    }
-
-        //    return reference;
-        //}
-
-        private TypeReference EraseInterpretedTypes(TypeReference reference, TypeDefinition definition) {
-            if (reference.IsArray) {
-                var oldElementType = reference.GetElementType();
-                var newElementType = EraseInterpretedTypes(oldElementType, oldElementType.Resolve());
-                return (newElementType != oldElementType) ? new ArrayType(newElementType) : reference;
-            }
-
-            var generic = reference as GenericInstanceType;
-            if (generic != null) {
-                var newGeneric = new GenericInstanceType(generic.GetElementType());
-                var hasErased = false;
-                var oldArguments = generic.GenericArguments;
-                for (var i = 0; i < oldArguments.Count; i++) {
-                    var oldArgument = oldArguments[i];
-                    var newArgument = EraseInterpretedTypes(oldArgument, oldArgument.Resolve());
-                    if (newArgument != oldArgument)
-                        hasErased = true;
-
-                    newGeneric.GenericArguments.Add(newArgument);
+        private IReadOnlyCollection<LazyMember> LazyMembersOf(TypeDefinition definition, GenericScope genericScope) {
+            var list = new List<LazyMember>();
+            foreach (var method in definition.Methods) {
+                if (method.IsConstructor) {
+                    list.Add(new LazyMember<ConstructorInfo>(method.Name, method.IsStatic, () => (ConstructorInfo)Method(method, genericScope)));
                 }
-
-                return hasErased ? newGeneric : reference;
+                else {
+                    list.Add(new LazyMember<MethodInfo>(method.Name, method.IsStatic, () => (MethodInfo)Method(method, genericScope)));
+                }
             }
 
-            if (ShouldInterpret(definition, reference))
-                return ObjectDataReference;
+            foreach (var field in definition.Fields) {
+                list.Add(new LazyMember<FieldInfo>(field.Name, field.IsStatic, () => Field(field, genericScope)));
+            }
 
-            return reference;
+            return list;
+        }
+
+        private InterpretedType NewInterpretedType(TypeDefinition definition, GenericScope genericScope, Type[] genericArguments = null) {
+            return new InterpretedType(
+                definition.Name,
+                definition.Namespace,
+                Assembly(definition.Module.Assembly),
+                new Lazy<Type>(() => Type(definition.DeclaringType, genericScope)),
+                new Lazy<Type>(() => Type(definition.BaseType, genericScope)),
+                new Lazy<Type[]>(() => definition.Interfaces.Select(i => Type(i, genericScope)).ToArray()),
+                null,
+                LazyMembersOf(definition, genericScope),
+                (System.Reflection.TypeAttributes)definition.Attributes,
+                genericArguments != null ? new GenericDetails(genericArguments) : null
+            );
+        }
+        
+        private InterpretedType NewIntepretedArrayType(Type elementType) {
+            throw new NotImplementedException();
         }
 
         public FieldInfo Field(FieldReference reference, GenericScope genericScope = null) {
@@ -156,7 +145,7 @@ namespace Cilin.Internal {
             var type = Type(reference.DeclaringType, genericScope);
 
             var interpretedType = type as InterpretedType;
-            if (!ShouldInterpret(definition, reference) && interpretedType == null) {
+            if (ShouldBeRuntime(definition, reference) && interpretedType == null) {
                 var token = reference.MetadataToken.ToInt32();
                 return (FieldInfo)type
                     .GetMembers()
@@ -186,7 +175,7 @@ namespace Cilin.Internal {
             var declaringType = Type(reference.DeclaringType, genericScope);
             var interpretedType = declaringType as InterpretedType;
 
-            if (!ShouldInterpret(definition, reference) && interpretedType == null) {
+            if (ShouldBeRuntime(definition, reference) && interpretedType == null) {
                 var special = SpecialMethodUncached(declaringType, reference);
                 if (special != null)
                     return special;
@@ -201,9 +190,9 @@ namespace Cilin.Internal {
 
             var generic = reference as GenericInstanceMethod;
             if (generic != null) {
-                genericScope = GenericScope(
-                    definition.GenericParameters.AsReadOnlyList(),
-                    generic.GenericArguments.AsReadOnlyList(),
+                genericScope = new GenericScope(
+                    definition.GenericParameters,
+                    generic.GenericArguments.Select(a => Type(a, genericScope)),
                     genericScope
                 );
             }
@@ -211,12 +200,10 @@ namespace Cilin.Internal {
             var parameters = reference.Parameters.Select(p => Parameter(p, genericScope)).ToArray();
             var attributes = (System.Reflection.MethodAttributes)definition.Attributes;
             Func<object, object[], object> invoke = (target, arguments) => {
-                var declaringTypeArguments = (interpretedType.ToTypeReference() as GenericInstanceType)?.GenericArguments.ToArray()
-                                           ?? Empty<TypeReference>.Array;
                 var typeArguments = (reference as GenericInstanceMethod)?.GenericArguments.ToArray()
                                  ?? Empty<TypeReference>.Array;
 
-                return _interpreter.InterpretCall(declaringTypeArguments, definition, typeArguments, target, arguments);
+                return _interpreter.InterpretCall(interpretedType.GetGenericArguments(), definition, typeArguments, target, arguments);
             };
             if (definition.IsConstructor)
                 return new InterpretedConstructor(definition, interpretedType, _interpreter, this);
@@ -232,33 +219,24 @@ namespace Cilin.Internal {
         private ParameterInfo Parameter(ParameterDefinition definition, GenericScope genericScope) {
             return new InterpretedParameter(Type(definition.ParameterType, genericScope));
         }
-        
-        public GenericScope GenericScope(IReadOnlyList<GenericParameter> parameters, IReadOnlyList<TypeReference> arguments, GenericScope parent) {
-            var fullMap = new Dictionary<GenericParameter, Type>();
-            for (var i = 0; i < parameters.Count; i++) {
-                fullMap[parameters[i]] = Type(arguments[i], parent);
-            }
-            return new GenericScope(fullMap, parent);
-        }
-        
-        private bool ShouldInterpret(TypeDefinition definition, TypeReference reference) {
-            return ShouldInterpret<TypeDefinition, TypeReference>(definition, reference)
-                && !reference.IsArray;
-        }
-
-        private bool ShouldInterpret<TDefinition, TReference>(TDefinition definition, TReference reference)
-            where TDefinition: TReference, IMemberDefinition
-            where TReference : MemberReference
-        {
-            return ShouldInterpret(definition.Module.Assembly);
-        }
-
-        private bool ShouldInterpret(AssemblyDefinition assembly) {
-            return assembly.Name.Name != "mscorlib";
-        }
 
         private Exception InterpretedMemberInNonInterpretedType(MemberReference reference, Type type) {
             return new Exception($"{reference} belongs to a non-interpreted type {type} and has to be non-intepreted.");
+        }
+
+        private bool ShouldBeRuntime(AssemblyDefinition assembly) {
+            return assembly.Name.Name == "mscorlib";
+        }
+
+        private bool ShouldBeRuntime<TDefinition, TReference>(TDefinition definition, TReference reference)
+            where TDefinition : TReference, IMemberDefinition
+            where TReference : MemberReference
+        {
+            return ShouldBeRuntime(definition.Module.Assembly);
+        }
+
+        private bool IsRuntime(Type type) {
+            return !(type is INonRuntimeType);
         }
     }
 }

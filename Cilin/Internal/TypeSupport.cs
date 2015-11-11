@@ -150,13 +150,13 @@ namespace Cilin.Internal {
 
             return new CilinObject(interpretedType);
         }
-        
-        public static string GetFullName(TypeReference reference) {
-            return AppendFullName(new StringBuilder(), reference).ToString();
-        }
 
         public static Type GetTypeOf(object @object) {
             return (@object as ITypeOverride)?.Type ?? @object.GetType();
+        }
+
+        public static string GetFullName(TypeReference reference) {
+            return AppendFullName(new StringBuilder(), reference).ToString();
         }
 
         private static StringBuilder AppendFullName(StringBuilder builder, TypeReference reference) {

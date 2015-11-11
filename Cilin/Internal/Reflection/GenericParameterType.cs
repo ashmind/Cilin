@@ -7,7 +7,7 @@ using System.Text;
 using System.Threading.Tasks;
 
 namespace Cilin.Internal.Reflection {
-    public class GenericParameterType : Type {
+    public class GenericParameterType : Type, INonRuntimeType {
         private readonly string _name;
 
         public GenericParameterType(string name) {

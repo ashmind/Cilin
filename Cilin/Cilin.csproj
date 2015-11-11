@@ -74,7 +74,10 @@
     <Compile Include="Internal\MemberReferenceEqualityComparer.cs" />
     <Compile Include="Internal\Reflection\ErasedWrapperConstructor.cs" />
     <Compile Include="Internal\Reflection\ErasedWrapperType.cs" />
+    <Compile Include="Internal\Reflection\GenericDetails.cs" />
     <Compile Include="Internal\Reflection\GenericParameterType.cs" />
+    <Compile Include="Internal\Reflection\INonRuntimeType.cs" />
+    <Compile Include="Internal\Reflection\LazyMember.cs" />
     <Compile Include="Internal\State\BaseData.cs" />
     <Compile Include="Internal\Empty.cs" />
     <Compile Include="Internal\State\IObjectWrapper.cs" />

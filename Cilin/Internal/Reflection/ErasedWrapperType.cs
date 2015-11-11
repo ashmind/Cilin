@@ -6,7 +6,7 @@ using System.Text;
 using System.Threading.Tasks;
 
 namespace Cilin.Internal.Reflection {
-    public class ErasedWrapperType : TypeDelegator {
+    public class ErasedWrapperType : TypeDelegator, INonRuntimeType {
         public ErasedWrapperType(Type runtimeType, InterpretedType fullType) : base(runtimeType) {
             RuntimeType = runtimeType;
             FullType = fullType;

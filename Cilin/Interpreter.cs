@@ -31,17 +31,34 @@ namespace Cilin {
             _resolver = new Resolver(this);
         }
 
-        public object InterpretCall(IReadOnlyList<TypeReference> declaringTypeArguments, MethodDefinition method, IReadOnlyList<TypeReference> typeArguments, object target, IReadOnlyList<object> arguments) {
-            if (method.IsInternalCall)
-                throw new ArgumentException($"Cannot interpret InternalCall method {method}.", nameof(method));
-            if (!method.HasBody)
-                throw new ArgumentException($"Cannot interpret method {method} that has no Body.", nameof(method));
-            if (declaringTypeArguments.Count != method.DeclaringType.GenericParameters.Count)
-                throw new ArgumentException($"Type {method.DeclaringType} requires {method.DeclaringType.GenericParameters.Count} type arguments, but got {declaringTypeArguments}.");
-            if (typeArguments.Count != method.GenericParameters.Count)
-                throw new ArgumentException($"Method {method} requires {method.GenericParameters.Count} type arguments, but got {typeArguments.Count}.");
+        public object InterpretCall(IReadOnlyList<Type> declaringTypeArguments, MethodDefinition method, IReadOnlyList<TypeReference> typeArguments, object target, IReadOnlyList<object> arguments) {
+            ValidateCall(method, declaringTypeArguments, typeArguments);
+            var genericTypeScope = new GenericScope(
+                method.DeclaringType.GenericParameters,
+                declaringTypeArguments,
+                null
+            );
+            return InterpretCall(genericTypeScope, method, typeArguments, target, arguments);
+        }
 
-            var context = new CilHandlerContext(declaringTypeArguments, method, typeArguments, target, arguments ?? Empty<object>.Array, _resolver);
+        public object InterpretCall(IReadOnlyList<TypeReference> declaringTypeArguments, MethodDefinition method, IReadOnlyList<TypeReference> typeArguments, object target, IReadOnlyList<object> arguments) {
+            ValidateCall(method, declaringTypeArguments, typeArguments);
+            var genericTypeScope = new GenericScope(
+                method.DeclaringType.GenericParameters,
+                declaringTypeArguments.Select(a => _resolver.Type(a, null)),
+                null
+            );
+            return InterpretCall(genericTypeScope, method, typeArguments, target, arguments);
+        }
+
+        private object InterpretCall(GenericScope genericTypeScope, MethodDefinition method, IReadOnlyList<TypeReference> typeArguments, object target, IReadOnlyList<object> arguments) {
+            var genericScope = new GenericScope(
+                method.GenericParameters,
+                typeArguments.Select(a => _resolver.Type(a, genericTypeScope)),
+                genericTypeScope
+            );
+
+            var context = new CilHandlerContext(genericScope, method, target, arguments ?? Empty<object>.Array, _resolver);
             var instruction = method.Body.Instructions[0];
             while (instruction != null) {
                 if (instruction.OpCode == OpCodes.Ret) {
@@ -61,6 +78,17 @@ namespace Cilin {
             }
 
             throw new Exception($"Failed to reach a 'ret' instruction.");
+        }
+
+        private void ValidateCall(MethodDefinition method, IReadOnlyList<object> declaringTypeArguments, IReadOnlyList<object> typeArguments) {
+            if (method.IsInternalCall)
+                throw new ArgumentException($"Cannot interpret InternalCall method {method}.", nameof(method));
+            if (!method.HasBody)
+                throw new ArgumentException($"Cannot interpret method {method} that has no Body.", nameof(method));
+            if (declaringTypeArguments.Count != method.DeclaringType.GenericParameters.Count)
+                throw new ArgumentException($"Type {method.DeclaringType} requires {method.DeclaringType.GenericParameters.Count} type arguments, but got {declaringTypeArguments}.");
+            if (typeArguments.Count != method.GenericParameters.Count)
+                throw new ArgumentException($"Method {method} requires {method.GenericParameters.Count} type arguments, but got {typeArguments.Count}.");
         }
 
         private void InterpretInstruction(Instruction instruction, CilHandlerContext context) {

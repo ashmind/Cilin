@@ -85,8 +85,8 @@ namespace Cilin.Internal.Reflection {
             if (!IsStatic)
                 ((InterpretedType)DeclaringType).EnsureStaticConstructorRun();
 
-            var declaringTypeArguments = (_declaringType.ToTypeReference() as GenericInstanceType)?.GenericArguments.ToArray()
-                                      ?? Empty<TypeReference>.Array;
+            var declaringTypeArguments = /*(_declaringType.ToTypeReference() as GenericInstanceType)?.GenericArguments.ToArray()
+                                      ??*/ Empty<TypeReference>.Array;
             _interpreter.InterpretCall(declaringTypeArguments, _definition, Empty<TypeReference>.Array, obj, parameters);
             return null;
         }
