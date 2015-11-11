@@ -173,6 +173,14 @@ namespace Cilin.Internal {
                 throw new Exception($"Failed to resolve definition for method {reference}.");
 
             var declaringType = Type(reference.DeclaringType, genericScope);
+            if (reference.DeclaringType.IsGenericInstance) {
+                genericScope = new GenericScope(
+                    definition.DeclaringType.GenericParameters,
+                    declaringType.GetGenericArguments(),
+                    genericScope
+                );
+            }
+
             var interpretedType = declaringType as InterpretedType;
 
             if (ShouldBeRuntime(definition, reference) && interpretedType == null) {

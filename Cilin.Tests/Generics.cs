@@ -11,6 +11,8 @@ namespace Cilin.Tests {
     public class Generics {
         private class LocalClass { }
         public class Generic<T> {
+            public static void GenericVoid<U>() { }
+            public static T ReturnFromType(T value) { return value; }
         }
 
         public static class NonGeneric {
@@ -21,33 +23,46 @@ namespace Cilin.Tests {
 
         [InterpreterTheory]
         [InlineData]
-        public void Generic_Void_LocalType() {
+        public void GenericVoidMethod_LocalType() {
             NonGeneric.GenericVoid<LocalClass>();
         }
 
         [InterpreterTheory]
         [InlineData]
-        public void Generic_Void_SystemType() {
+        public void GenericVoidMethod_RuntimeType() {
             NonGeneric.GenericVoid<int>();
         }
 
         [InterpreterTheory]
         [InlineData]
-        public int Generic_Result_SystemType() {
+        public int GenericMethod_TypeDefinedByArgument() {
             return NonGeneric.GenericReturn(5);
         }
 
         [InterpreterTheory]
         [InlineData(5)]
         [InlineData("x")]
-        public T Generic_Result_InGenericTestMethod<T>(T value) {
+        public T GenericMethod_TypeDefinedByTestMethod<T>(T value) {
             return NonGeneric.GenericReturn(value);
         }
 
         [InterpreterTheory]
         [InlineData]
-        public Generic<int> Generic_Result_LocalGenericType_NestedSystemType() {
+        public Generic<int> GenericMethod_LocalTypeNestedInSystemType() {
             return NonGeneric.GenericReturnNestedLocal<int>();
+        }
+
+        [InterpreterTheory]
+        [InlineData]
+        public void GenericClass_GenericVoidMethod_LocalType() {
+            Generic<LocalClass>.GenericVoid<LocalClass>();
+        }
+
+        [InterpreterTheory]
+        [InlineData(5)]
+        [InlineData("x")]
+        public T GenericClass_NonGenericMethod_TypeDefinedByTestMethod<T>(T value) {
+            return Generic<T>.ReturnFromType(value);
         }
     }
 }
