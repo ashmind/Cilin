@@ -11,6 +11,8 @@ namespace Cilin.Tests {
     public class Generics {
         private class LocalClass { }
         public class Generic<T> {
+            public static T Field;
+
             public static void GenericVoid<U>() { }
             public static T ReturnFromType(T value) { return value; }
         }
@@ -63,6 +65,14 @@ namespace Cilin.Tests {
         [InlineData("x")]
         public T GenericClass_NonGenericMethod_TypeDefinedByTestMethod<T>(T value) {
             return Generic<T>.ReturnFromType(value);
+        }
+
+        [InterpreterTheory]
+        [InlineData(5)]
+        [InlineData("x")]
+        public T GenericClass_Field_TypeDefinedByTestMethod<T>(T value) {
+            Generic<T>.Field = value;
+            return Generic<T>.Field;
         }
     }
 }

@@ -12,7 +12,6 @@ using Mono.Cecil;
 
 namespace Cilin.Internal {
     public class Resolver {
-        private static readonly Lazy<Type> LazyTypeNull = new Lazy<Type>(() => null);
         private static readonly Lazy<Type> LazyTypeArray = new Lazy<Type>(() => typeof(Array));
 
         private static readonly MemberReferenceEqualityComparer ReferenceComparer = new MemberReferenceEqualityComparer();
@@ -68,6 +67,9 @@ namespace Cilin.Internal {
                 );
             }
 
+            var declaringType = definition.DeclaringType != null ? Type(definition.DeclaringType, genericScope) : null;
+            genericScope = declaringType != null ? WithTypeScope(genericScope, definition.DeclaringType, declaringType) : genericScope;
+
             var generic = reference as GenericInstanceType;
             if (generic != null) {
                 var genericDefinition = Type(definition, genericScope);
@@ -89,10 +91,10 @@ namespace Cilin.Internal {
                         erased[i] = IsRuntime(arguments[i]) ? arguments[i] : typeof(CilinObject);
                     }
                     var erasedFull = genericDefinition.MakeGenericType(erased);
-                    return new ErasedWrapperType(erasedFull, NewInterpretedType(definition, genericScope, arguments));
+                    return new ErasedWrapperType(erasedFull, NewInterpretedType(declaringType, definition, genericScope, arguments));
                 }
 
-                return NewInterpretedType(definition, genericScope, arguments);
+                return NewInterpretedType(declaringType, definition, genericScope, arguments);
             }
 
             if (ShouldBeRuntime(definition, reference)) {
@@ -105,7 +107,7 @@ namespace Cilin.Internal {
                 }
             }
 
-            return NewInterpretedType(definition, genericScope);
+            return NewInterpretedType(declaringType, definition, genericScope);
         }
 
         private IReadOnlyCollection<LazyMember> LazyMembersOf(TypeDefinition definition, GenericScope genericScope) {
@@ -126,12 +128,12 @@ namespace Cilin.Internal {
             return list;
         }
 
-        private InterpretedType NewInterpretedType(TypeDefinition definition, GenericScope genericScope, Type[] genericArguments = null) {
+        private InterpretedType NewInterpretedType(Type declaringType, TypeDefinition definition, GenericScope genericScope, Type[] genericArguments = null) {
             return new InterpretedType(
                 definition.Name,
                 definition.Namespace,
                 Assembly(definition.Module.Assembly),
-                definition.DeclaringType != null ? new Lazy<Type>(() => Type(definition.DeclaringType, genericScope)) : LazyTypeNull,
+                declaringType,
                 new Lazy<Type>(() => Type(definition.BaseType, genericScope)),
                 new Lazy<Type[]>(() => definition.Interfaces.Select(i => Type(i, genericScope)).ToArray()),
                 null,
@@ -146,7 +148,7 @@ namespace Cilin.Internal {
                 elementType.Name + "[]",
                 elementType.Namespace,
                 elementType.Assembly,
-                LazyTypeNull,
+                null,
                 LazyTypeArray,
                 new Lazy<Type[]>(() => TypeSupport.GetArrayInterfaces(elementTypeReference).Select(i => Type(i, genericScope)).ToArray()),
                 null,
@@ -156,26 +158,40 @@ namespace Cilin.Internal {
             );
         }
 
-        public FieldInfo Field(FieldReference reference, GenericScope genericScope = null) {
+        public FieldInfo Field(FieldReference reference, GenericScope genericScope) {
             Argument.NotNull(nameof(reference), reference);
-            return (FieldInfo)_memberInfoCache.GetOrAdd(reference, r => FieldUncached((FieldReference)r, genericScope));
+
+            MemberInfo cached;
+            if (_memberInfoCache.TryGetValue(reference, out cached))
+                return (FieldInfo)cached;
+
+            var field = FieldUncached(reference, genericScope);
+            _memberInfoCache.Add(reference, field);
+            return field;
         }
 
         private FieldInfo FieldUncached(FieldReference reference, GenericScope genericScope = null) {
             var definition = reference.Resolve();
-            var type = Type(reference.DeclaringType, genericScope);
+            var declaringType = Type(reference.DeclaringType, genericScope);
 
-            var interpretedType = type as InterpretedType;
+            genericScope = WithTypeScope(genericScope, definition.DeclaringType, declaringType);
+
+            var interpretedType = declaringType as InterpretedType;
             if (ShouldBeRuntime(definition, reference) && interpretedType == null) {
                 var token = reference.MetadataToken.ToInt32();
-                return (FieldInfo)type
+                return (FieldInfo)declaringType
                     .GetMembers()
                     .First(m => m.MetadataToken == token);
             }
             if (interpretedType == null)
-                throw InterpretedMemberInNonInterpretedType(reference, type);
+                throw InterpretedMemberInNonInterpretedType(reference, declaringType);
 
-            return new InterpretedField(reference, definition, interpretedType, this);
+            return new InterpretedField(
+                interpretedType,
+                definition.Name,
+                Type(reference.FieldType, genericScope),
+                (System.Reflection.FieldAttributes)definition.Attributes
+            );
         }
         
         public MethodBase Method(MethodReference reference, GenericScope genericScope) {
@@ -249,6 +265,17 @@ namespace Cilin.Internal {
 
         private ParameterInfo Parameter(ParameterDefinition definition, GenericScope genericScope) {
             return new InterpretedParameter(Type(definition.ParameterType, genericScope));
+        }
+
+        private GenericScope WithTypeScope(GenericScope genericScope, TypeDefinition definition, Type type) {
+            if (!type.IsConstructedGenericType)
+                return genericScope;
+
+            return new GenericScope(
+                definition.GenericParameters,
+                type.GetGenericArguments(),
+                genericScope
+            );
         }
 
         private Exception InterpretedMemberInNonInterpretedType(MemberReference reference, Type type) {

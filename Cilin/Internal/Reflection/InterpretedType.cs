@@ -16,7 +16,7 @@ namespace Cilin.Internal.Reflection {
         private readonly string _name;
         private readonly string _namespace;
         private readonly Assembly _assembly;
-        private readonly Lazy<Type> _declaringType;
+        private readonly Type _declaringType;
         private readonly Lazy<Type> _baseType;
         private readonly Lazy<Type[]> _interfaces;
         private readonly Type _elementType;
@@ -31,7 +31,7 @@ namespace Cilin.Internal.Reflection {
             string name,
             string @namespace,
             Assembly assembly,
-            Lazy<Type> declaringType,
+            Type declaringType,
             Lazy<Type> baseType,
             Lazy<Type[]> interfaces,
             Type elementType,
@@ -207,6 +207,8 @@ namespace Cilin.Internal.Reflection {
             throw new NotImplementedException();
         }
 
+        public override bool IsConstructedGenericType => _generic?.IsConstructed ?? false;
+
         protected override bool IsPointerImpl() {
             throw new NotImplementedException();
         }
@@ -247,7 +249,7 @@ namespace Cilin.Internal.Reflection {
             return false;
         }
 
-        public override Type DeclaringType => _declaringType.Value;
+        public override Type DeclaringType => _declaringType;
 
         public override Type MakeArrayType() {
             //if (_arrayType != null)
@@ -257,8 +259,6 @@ namespace Cilin.Internal.Reflection {
             //return _arrayType;
             throw new NotImplementedException();
         }
-
-        public GenericScope GenericScope { get; }
 
         private bool MemberMatches(MethodInfo method, BindingFlags bindingAttr) {
             var unsupported = BindingFlags.ExactBinding
@@ -297,7 +297,7 @@ namespace Cilin.Internal.Reflection {
 
         private string GetFullName() {
             if (IsNested)
-                return _declaringType.Value.FullName + "." + Name;
+                return _declaringType.FullName + "." + Name;
 
             return (Namespace != null) ? Namespace + "." + Name : Name;
         }

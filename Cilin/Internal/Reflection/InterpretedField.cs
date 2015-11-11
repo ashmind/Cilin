@@ -8,25 +8,20 @@ using FieldAttributes = System.Reflection.FieldAttributes;
 
 namespace Cilin.Internal.Reflection {
     public class InterpretedField : FieldInfo {
-        private readonly FieldReference _reference;
-        private readonly FieldDefinition _definition;
         private readonly InterpretedType _declaringType;
-        private readonly Resolver _resolver;
+        private readonly string _name;
+        private readonly Type _fieldType;
+        private readonly FieldAttributes _attributes;
 
-        public InterpretedField(FieldReference reference, FieldDefinition definition, InterpretedType declaringType, Resolver resolver) {
-            _reference = reference;
-            _definition = definition;
-            _resolver = resolver;
+        public InterpretedField(InterpretedType declaringType, string name, Type fieldType, FieldAttributes attributes) {
             _declaringType = declaringType;
+            _name = name;
+            _fieldType = fieldType;
+            _attributes = attributes;
         }
 
-        public override FieldAttributes Attributes {
-            get { return (FieldAttributes)_definition.Attributes; }
-        }
-
-        public override Type DeclaringType {
-            get { return _declaringType; }
-        }
+        public override FieldAttributes Attributes => _attributes;
+        public override Type DeclaringType => _declaringType;
 
         public override RuntimeFieldHandle FieldHandle {
             get {
@@ -34,13 +29,8 @@ namespace Cilin.Internal.Reflection {
             }
         }
 
-        public override Type FieldType {
-            get { return _resolver.Type(_reference.FieldType, _declaringType.GenericScope); }
-        }
-
-        public override string Name {
-            get { return _definition.Name; }
-        }
+        public override Type FieldType => _fieldType;
+        public override string Name => _name;
 
         public override Type ReflectedType {
             get {
