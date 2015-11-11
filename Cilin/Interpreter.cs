@@ -34,9 +34,12 @@ namespace Cilin {
         public object InterpretCall(IReadOnlyList<TypeReference> declaringTypeArguments, MethodDefinition method, IReadOnlyList<TypeReference> typeArguments, object target, IReadOnlyList<object> arguments) {
             if (method.IsInternalCall)
                 throw new ArgumentException($"Cannot interpret InternalCall method {method}.", nameof(method));
-
             if (!method.HasBody)
                 throw new ArgumentException($"Cannot interpret method {method} that has no Body.", nameof(method));
+            if (declaringTypeArguments.Count != method.DeclaringType.GenericParameters.Count)
+                throw new ArgumentException($"Type {method.DeclaringType} requires {method.DeclaringType.GenericParameters.Count} type arguments, but got {declaringTypeArguments}.");
+            if (typeArguments.Count != method.GenericParameters.Count)
+                throw new ArgumentException($"Method {method} requires {method.GenericParameters.Count} type arguments, but got {typeArguments.Count}.");
 
             var context = new CilHandlerContext(declaringTypeArguments, method, typeArguments, target, arguments ?? Empty<object>.Array, _resolver);
             var instruction = method.Body.Instructions[0];

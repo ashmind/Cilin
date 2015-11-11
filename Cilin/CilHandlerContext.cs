@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using AshMind.Extensions;
 using Cilin.Internal;
 using Mono.Cecil;
 using Mono.Cecil.Cil;
@@ -27,7 +28,15 @@ namespace Cilin {
             Target = target;
             Arguments = arguments;
 
-            GenericScope = new GenericScope(method, typeArguments, new GenericScope(method.DeclaringType, declaringTypeArguments));
+            GenericScope = Resolver.GenericScope(
+                method.GenericParameters.AsReadOnlyList(),
+                typeArguments.AsReadOnlyList(),
+                Resolver.GenericScope(
+                    method.DeclaringType.GenericParameters.AsReadOnlyList(),
+                    declaringTypeArguments.AsReadOnlyList(),
+                    null
+                )
+            );
         }
 
         public Resolver Resolver { get; }
@@ -43,7 +52,7 @@ namespace Cilin {
 
         public void SetVariable(int index, object value) {
             var definition = _variableDefinitions[index];
-            _variablesMutable[index] = TypeSupport.Convert(value, definition.VariableType, Resolver);
+            _variablesMutable[index] = TypeSupport.Convert(value, Resolver.Type(definition.VariableType, GenericScope));
         }
     }
 }

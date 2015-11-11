@@ -5,6 +5,7 @@ using System.Reflection;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
+using AshMind.Extensions;
 using Mono.Cecil;
 using Xunit;
 using Xunit.Abstractions;
@@ -35,14 +36,20 @@ namespace Cilin.Tests.Helpers {
         ) {}
 
         protected override object CallTestMethod(object testClassInstance) {
-            var module = ModuleDefinition.ReadModule(TestMethod.Module.FullyQualifiedName);
-            var type = module.Types.Single(t => t.MetadataToken.ToInt32() == TestMethod.DeclaringType.MetadataToken);
-            var method = type.Methods.Single(m => m.MetadataToken.ToInt32() == TestMethod.MetadataToken);
+            var modules = new Dictionary<string, ModuleDefinition>();
+            var testType = ResolveType(TestMethod.DeclaringType, modules);
+            var testMethod = testType.Methods.Single(m => m.MetadataToken.ToInt32() == TestMethod.MetadataToken);
+            var methodTypeArguments = TestMethod.GetGenericArguments().Select(t => ResolveType(t, modules)).ToArray();
 
             var actualResult = TestMethod.Invoke(testClassInstance, TestMethodArguments);
-            var interpretedResult = new Interpreter().InterpretCall(new TypeReference[0], method, new TypeReference[0], testClassInstance, TestMethodArguments);
+            var interpretedResult = new Interpreter().InterpretCall(new TypeReference[0], testMethod, methodTypeArguments, testClassInstance, TestMethodArguments);
             Assert.Equal(actualResult, interpretedResult);
             return null;
+        }
+
+        private TypeDefinition ResolveType(Type type, IDictionary<string, ModuleDefinition> modules) {
+            var module = modules.GetOrAdd(type.Module.FullyQualifiedName, name => ModuleDefinition.ReadModule(name));
+            return module.Types.Single(t => t.MetadataToken.ToInt32() == TestMethod.DeclaringType.MetadataToken);
         }
     }
 }

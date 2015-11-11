@@ -31,10 +31,6 @@ namespace Cilin.Internal {
             }
         }
 
-        public static object Convert(object value, TypeReference requiredType, Resolver resolver) {
-            return Convert(value, resolver.Type(requiredType));
-        }
-
         public static object Convert(object value, Type requiredType) {
             if (value == null) {
                 if (requiredType == typeof(bool))

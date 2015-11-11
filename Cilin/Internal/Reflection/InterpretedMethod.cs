@@ -13,37 +13,31 @@ using MethodImplAttributes = System.Reflection.MethodImplAttributes;
 
 namespace Cilin.Internal.Reflection {
     public class InterpretedMethod : MethodInfo {
-        private readonly MethodReference _reference;
-        private readonly MethodDefinition _definition;
-        private readonly Lazy<ParameterInfo[]> _parameters;
         private readonly InterpretedType _declaringType;
-        private readonly Interpreter _interpreter;
-        private readonly Resolver _resolver;
+        private readonly string _name;
+        private readonly Type _returnType;
+        private readonly ParameterInfo[] _parameters;
+        private readonly MethodAttributes _attributes;
+        private readonly Func<object, object[], object> _invoke;
 
-        public InterpretedMethod(MethodReference reference, MethodDefinition definition, InterpretedType declaringType, Interpreter interpreter, Resolver resolver) {
-            Argument.NotNullAndCast<InterpretedType>(nameof(declaringType), declaringType);
-            _reference = reference;
-            _definition = definition;
-            
-            _parameters = new Lazy<ParameterInfo[]>(() => {
-                if (!_reference.HasParameters)
-                    return Empty<ParameterInfo>.Array;
-
-                return _reference.Parameters
-                    .Select(p => _resolver.Parameter(p, GenericScope))
-                    .ToArray();
-            });
-            _interpreter = interpreter;
+        public InterpretedMethod(
+            InterpretedType declaringType,
+            string name,
+            Type returnType,
+            ParameterInfo[] parameters,
+            MethodAttributes attributes,
+            Func<object, object[], object> invoke
+        ) {
             _declaringType = declaringType;
-            _resolver = resolver;
-
-            var generic = reference as GenericInstanceMethod;
-            if (generic != null)
-                GenericScope = new GenericScope(_definition, generic.GenericArguments.ToArray(), declaringType.GenericScope);
+            _name = name;
+            _returnType = returnType;
+            _parameters = parameters;
+            _attributes = attributes;
+            _invoke = invoke;
         }
 
         public override MethodAttributes Attributes {
-            get { return (MethodAttributes)_definition.Attributes; }
+            get { return _attributes; }
         }
 
         public override Type DeclaringType {
@@ -55,7 +49,7 @@ namespace Cilin.Internal.Reflection {
         }
 
         public override string Name {
-            get { return _definition.Name; }
+            get { return _name; }
         }
 
         public override Type ReflectedType {
@@ -87,7 +81,7 @@ namespace Cilin.Internal.Reflection {
         }
 
         public override ParameterInfo[] GetParameters() {
-            return _parameters.Value;
+            return _parameters;
         }
 
         public override object Invoke(object obj, BindingFlags invokeAttr, Binder binder, object[] parameters, CultureInfo culture) {
@@ -99,13 +93,8 @@ namespace Cilin.Internal.Reflection {
         }
 
         public object InvokeNonVirtual(object obj, BindingFlags invokeAttr, Binder binder, object[] parameters, CultureInfo culture) {
-            ((InterpretedType)DeclaringType).EnsureStaticConstructorRun();
-            var declaringTypeArguments = (_declaringType.ToTypeReference() as GenericInstanceType)?.GenericArguments.ToArray()
-                                       ?? Empty<TypeReference>.Array;
-            var typeArguments = (_reference as GenericInstanceMethod)?.GenericArguments.ToArray()
-                             ?? Empty<TypeReference>.Array;
-
-            return _interpreter.InterpretCall(declaringTypeArguments, _definition, typeArguments, obj, parameters);
+            _declaringType.EnsureStaticConstructorRun();
+            return _invoke(obj, parameters);
         }
 
         public override bool IsDefined(Type attributeType, bool inherit) {
@@ -113,11 +102,9 @@ namespace Cilin.Internal.Reflection {
         }
 
         public override Type ReturnType {
-            get { return _resolver.Type(_reference.ReturnType, GenericScope); }
+            get { return _returnType; }
         }
         
-        public GenericScope GenericScope { get; }
-
         private class Delegator {
             private static readonly IList<MethodInfo> _actions = new List<MethodInfo>();
             private static readonly IList<MethodInfo> _funcs = new List<MethodInfo>();

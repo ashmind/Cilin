@@ -34,7 +34,7 @@ namespace Cilin.Internal.Reflection {
 
             var generic = reference as GenericInstanceType;
             if (generic != null) {
-                GenericScope = new GenericScope(_definition, generic.GenericArguments.ToArray());
+                //GenericScope = new GenericScope(_definition, generic.GenericArguments.ToArray());
             }
             else if (_reference.HasGenericParameters) {
                 throw new ArgumentException($"{nameof(InterpretedType)} cannot have unresolved generic parameters (found: {_reference.GenericParameters.First()}).");
@@ -57,7 +57,7 @@ namespace Cilin.Internal.Reflection {
             if (constructorDefinition == null)
                 return;
 
-            var constructor = (ConstructorInfo)_resolver.Method(constructorDefinition);
+            var constructor = (ConstructorInfo)_resolver.Method(constructorDefinition, null);
             constructor.Invoke(null);
         }
 
@@ -134,7 +134,7 @@ namespace Cilin.Internal.Reflection {
 
         public override Type GetElementType() {
             var elementType = _definition.GetElementType();
-            return elementType != null ? _resolver.Type(elementType) : null;
+            return elementType != null ? _resolver.Type(elementType, null) : null;
         }
 
         public override EventInfo GetEvent(string name, BindingFlags bindingAttr) {
@@ -179,7 +179,7 @@ namespace Cilin.Internal.Reflection {
             if (_methods == null) {
                 _methods = _definition.Methods
                     .Where(m => !m.IsConstructor)
-                    .Select(m => _resolver.Method(m, GenericScope, this))
+                    .Select(m => _resolver.Method(m, GenericScope))
                     .Cast<MethodInfo>()
                     .ToArray();
             }
@@ -283,14 +283,14 @@ namespace Cilin.Internal.Reflection {
         }
 
         public override Type DeclaringType {
-            get { return _definition.DeclaringType != null ? _resolver.Type(_definition.DeclaringType) : null; }
+            get { return _definition.DeclaringType != null ? _resolver.Type(_definition.DeclaringType, null) : null; }
         }
 
         public override Type MakeArrayType() {
             if (_arrayType != null)
                 return _arrayType;
 
-            _arrayType = _resolver.Type(new ArrayType(_reference));
+            _arrayType = _resolver.Type(new ArrayType(_reference), null);
             return _arrayType;
         }
 

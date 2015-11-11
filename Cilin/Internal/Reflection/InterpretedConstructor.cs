@@ -21,14 +21,14 @@ namespace Cilin.Internal.Reflection {
         public InterpretedConstructor(MethodDefinition definition, InterpretedType declaringType, Interpreter interpreter, Resolver resolver) {
             _definition = definition;
             _interpreter = interpreter;
-            _parameters = new Lazy<ParameterInfo[]>(() => {
-                if (!definition.HasParameters)
-                    return Empty<ParameterInfo>.Array;
+            //_parameters = new Lazy<ParameterInfo[]>(() => {
+            //    if (!definition.HasParameters)
+            //        return Empty<ParameterInfo>.Array;
 
-                return definition.Parameters
-                    .Select(p => _resolver.Parameter(p, declaringType.GenericScope))
-                    .ToArray();
-            });
+            //    return definition.Parameters
+            //        .Select(p => _resolver.Parameter(p))
+            //        .ToArray();
+            //});
             _declaringType = declaringType;
             _resolver = resolver;
         }
