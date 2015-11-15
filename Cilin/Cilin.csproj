@@ -68,6 +68,7 @@
   <ItemGroup>
     <Compile Include="Internal\GenericScope.cs" />
     <Compile Include="Internal\Handlers\CastclassHandler.cs" />
+    <Compile Include="Internal\Handlers\CxxHandler.cs" />
     <Compile Include="Internal\Handlers\IsinstHandler.cs" />
     <Compile Include="Internal\Handlers\LdftnHandler.cs" />
     <Compile Include="Internal\Handlers\PopHandler.cs" />

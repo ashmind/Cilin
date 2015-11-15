@@ -8,10 +8,12 @@ using Mono.Cecil;
 
 namespace Cilin.Internal.Reflection {
     public class InterpretedAssembly : Assembly {
-        private AssemblyDefinition _definition;
+        private string _fullName;
 
-        public InterpretedAssembly(AssemblyDefinition definition) {
-            _definition = definition;
+        public InterpretedAssembly(string fullName) {
+            _fullName = fullName;
         }
+
+        public override string FullName => _fullName;
     }
 }

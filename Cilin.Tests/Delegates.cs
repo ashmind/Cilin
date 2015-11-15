@@ -21,5 +21,13 @@ namespace Cilin.Tests {
         public T IdentityFunc_GenericArgument<T>(T argument) {
             return ((Func<T, T>)(x => x))(argument);
         }
+
+        [InterpreterTheory]
+        [InlineData]
+        public int ClosureAction() {
+            var x = 0;
+            ((Action)(() => x = 5))();
+            return x;
+        }
     }
 }

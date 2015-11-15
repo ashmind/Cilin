@@ -9,8 +9,10 @@ using Xunit;
 
 namespace Cilin.Tests {
     public class Generics {
-        private class LocalClass { }
-        public class Generic<T> {
+        public class LocalClass { }
+        public class GenericBase<T> {}
+
+        public class Generic<T> : GenericBase<T> {
             public static T Field;
 
             public static void GenericVoid<U>() { }
@@ -73,6 +75,14 @@ namespace Cilin.Tests {
         public T GenericClass_Field_TypeDefinedByTestMethod<T>(T value) {
             Generic<T>.Field = value;
             return Generic<T>.Field;
+        }
+
+        [InterpreterTheory]
+        [InlineData(5)]
+        public bool GenericClass_Cast_ToBaseType<T>(T value) {
+            var instance = new Generic<T>();
+            var @base = (GenericBase<T>)instance;
+            return @base != null;
         }
     }
 }

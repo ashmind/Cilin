@@ -23,7 +23,9 @@ namespace Cilin.Internal.Reflection {
         private readonly IReadOnlyCollection<LazyMember> _members;
         private readonly TypeAttributes _attributes;
         private readonly GenericDetails _generic;
+
         private Lazy<string> _fullName;
+        private Lazy<string> _assemblyQualifiedName;
 
         private bool _staticConstructorStarted;
 
@@ -51,6 +53,7 @@ namespace Cilin.Internal.Reflection {
             _generic = generic;
 
             _fullName = new Lazy<string>(GetFullName);
+            _assemblyQualifiedName = new Lazy<string>(GetAssemblyQualifiedName);
 
             StaticData = new StaticData(this);
         }
@@ -74,10 +77,7 @@ namespace Cilin.Internal.Reflection {
         public StaticData StaticData { get; }
 
         public override Assembly Assembly => _assembly;
-
-        public override string AssemblyQualifiedName {
-            get { throw new NotImplementedException(); }
-        }
+        public override string AssemblyQualifiedName => _assemblyQualifiedName.Value;
 
         public override Type BaseType => _baseType.Value;
         public override string FullName => _fullName.Value;
@@ -293,14 +293,31 @@ namespace Cilin.Internal.Reflection {
         }
 
         private string GetFullName() {
+            var builder = new StringBuilder();
+            if (!Namespace.IsNullOrEmpty())
+                builder.Append(Namespace).Append('.');
+
             if (IsNested)
-                return _declaringType.FullName + "." + Name;
+                builder.Append(DeclaringType.FullName).Append('+');
 
-            return (Namespace != null) ? Namespace + "." + Name : Name;
+            builder.Append(Name);
+
+            if (IsConstructedGenericType) {
+                var arguments = GetGenericArguments();
+                builder.Append("[[")
+                       .Append(arguments[0].AssemblyQualifiedName);
+
+                for (var i = 1; i < arguments.Length; i++) {
+                    builder.Append("],[")
+                           .Append(arguments[i].AssemblyQualifiedName);
+                }
+                builder.Append("]]");
+            }
+
+            return builder.ToString();
         }
 
-        public override string ToString() {
-            return FullName;
-        }
+        private string GetAssemblyQualifiedName() => FullName + ", " + Assembly.FullName;
+        public override string ToString() => FullName;
     }
 }

@@ -36,7 +36,7 @@ namespace Cilin.Internal {
                 if (ShouldBeRuntime(assembly))
                     return typeof(object).Assembly; // TODO
 
-                return new InterpretedAssembly(assembly);
+                return new InterpretedAssembly(assembly.FullName);
             });
         }
 
@@ -128,6 +128,10 @@ namespace Cilin.Internal {
         }
 
         private InterpretedType NewInterpretedType(Type declaringType, TypeDefinition definition, TypeReference reference, GenericScope genericScope, Type[] genericArguments = null) {
+            var generic = GenericDetails(definition, genericArguments, genericScope);
+            if (generic?.IsConstructed ?? false)
+                genericScope = new GenericScope(definition.GenericParameters, generic.ParametersOrArguments, genericScope);
+
             return new InterpretedType(
                 definition.Name,
                 definition.Namespace,
@@ -138,7 +142,7 @@ namespace Cilin.Internal {
                 null,
                 LazyMembersOf(definition, reference, genericScope),
                 (System.Reflection.TypeAttributes)definition.Attributes,
-                GenericDetails(definition, genericArguments, genericScope)
+                generic
             );
         }
 
@@ -256,13 +260,7 @@ namespace Cilin.Internal {
                 throw new Exception($"Failed to resolve definition for method {reference}.");
 
             var declaringType = Type(reference.DeclaringType, genericScope);
-            if (reference.DeclaringType.IsGenericInstance) {
-                genericScope = new GenericScope(
-                    definition.DeclaringType.GenericParameters,
-                    declaringType.GetGenericArguments(),
-                    genericScope
-                );
-            }
+            genericScope = WithTypeScope(genericScope, definition.DeclaringType, declaringType);
 
             var interpretedType = declaringType as InterpretedType;
             if (ShouldBeRuntime(definition, reference) && interpretedType == null) {

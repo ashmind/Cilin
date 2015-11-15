@@ -10,7 +10,7 @@ using Mono.Cecil.Cil;
 
 namespace Cilin.Internal {
     public class StelemHandler : ICilHandler {
-        private readonly IReadOnlyDictionary<OpCode, Type> TypeMap = new Dictionary<OpCode, Type> {
+        private static readonly IReadOnlyDictionary<OpCode, Type> TypeMap = new Dictionary<OpCode, Type> {
             { OpCodes.Stelem_I,  typeof(IntPtr) },
             { OpCodes.Stelem_I1, typeof(sbyte) },
             { OpCodes.Stelem_I2, typeof(short) },

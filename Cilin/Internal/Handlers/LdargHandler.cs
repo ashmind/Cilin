@@ -7,7 +7,7 @@ using Mono.Cecil.Cil;
 
 namespace Cilin.Internal {
     public class LdargHandler : ICilHandler {
-        private readonly IReadOnlyDictionary<OpCode, int> SpecialMap = new Dictionary<OpCode, int> {
+        private static readonly IReadOnlyDictionary<OpCode, int> SpecialMap = new Dictionary<OpCode, int> {
             { OpCodes.Ldarg_0, 0 },
             { OpCodes.Ldarg_1, 1 },
             { OpCodes.Ldarg_2, 2 },
