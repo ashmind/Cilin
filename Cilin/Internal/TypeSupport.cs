@@ -39,20 +39,15 @@ namespace Cilin.Internal {
                 return value; // we are assuming it's convertible as IL should be checked for us
             }
 
-            if (requiredType == typeof(object))
-                return value;
-
-            requiredType = (requiredType as ErasedWrapperType)?.FullType ?? requiredType;
             var typeOfValue = GetTypeOf(value);
-
-            if (requiredType.IsAssignableFrom(typeOfValue))
+            if (IsAssignableFrom(requiredType, typeOfValue))
                 return value;
 
             if (requiredType == typeof(bool)) {
                 if (value is int)
                     return (int)value != 0;
 
-                if (!value.GetType().IsValueType)
+                if (!typeOfValue.IsValueType)
                     return true; // not null as null check is separate above
             }
 
@@ -109,6 +104,42 @@ namespace Cilin.Internal {
             }
 
             throw new NotImplementedException($"Conversion from {value} (type {typeOfValue}) to {requiredType} is not implemented.");
+        }
+
+        public static bool IsAssignableFrom(Type targetType, Type sourceType) {
+            if (targetType == typeof(object))
+                return true;
+
+            targetType = (targetType as ErasedWrapperType)?.FullType ?? targetType;
+            sourceType = (sourceType as ErasedWrapperType)?.FullType ?? sourceType;
+            if (targetType == sourceType)
+                return true;
+
+            if (!(targetType is INonRuntimeType) && !(sourceType is INonRuntimeType))
+                return targetType.IsAssignableFrom(sourceType);
+
+            if (sourceType.IsSubclassOf(targetType))
+                return true;
+
+            if (targetType.IsInterface) {
+                var interfaces = sourceType.GetInterfaces();
+                foreach (var @interface in interfaces) {
+                    if (((@interface as ErasedWrapperType)?.FullType ?? @interface) == targetType)
+                        return true;
+                }
+            }
+
+            if (targetType.IsGenericParameter) {
+                var constraints = targetType.GetGenericParameterConstraints();
+                for (int i = 0; i < constraints.Length; i++) {
+                    if (!IsAssignableFrom(constraints[i], sourceType))
+                        return false;
+                }
+
+                return true;
+            }
+
+            return false;
         }
 
         public static object CreateArray(Type arrayType, int length) {

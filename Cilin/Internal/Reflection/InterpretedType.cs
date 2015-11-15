@@ -225,25 +225,7 @@ namespace Cilin.Internal.Reflection {
             if (c == null)
                 return false;
 
-            if (this == c)
-                return true;
-
-            var erased = c as ErasedWrapperType;
-            if (erased != null)
-                return IsAssignableFrom(erased.FullType);
-
-            if (c.IsSubclassOf(this))
-                return true;
-
-            if (IsInterface) {
-                var interfaces = c.GetInterfaces();
-                foreach (var @interface in interfaces) {
-                    if (((@interface as ErasedWrapperType)?.FullType ?? @interface) == this)
-                        return true;
-                }
-            }
-
-            return false;
+            return TypeSupport.IsAssignableFrom(this, c);
         }
 
         public override Type DeclaringType => _declaringType;

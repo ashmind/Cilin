@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 using Cilin.Tests.Helpers;
@@ -11,7 +12,6 @@ namespace Cilin.Tests {
     public class Generics {
         public class LocalClass { }
         public class GenericBase<T> {}
-
         public class Generic<T> : GenericBase<T> {
             public static T Field;
 
@@ -23,6 +23,11 @@ namespace Cilin.Tests {
             public static void GenericVoid<T>() { }
             public static T GenericReturn<T>(T value) { return value; }
             public static Generic<T> GenericReturnNestedLocal<T>() { return null; }
+        }
+
+        public class Enumerable<T> : IEnumerable<T> {
+            public IEnumerator<T> GetEnumerator() { throw new NotSupportedException(); }
+            IEnumerator IEnumerable.GetEnumerator() { throw new NotSupportedException(); }
         }
 
         [InterpreterTheory]
@@ -79,10 +84,18 @@ namespace Cilin.Tests {
 
         [InterpreterTheory]
         [InlineData(5)]
-        public bool GenericClass_Cast_ToBaseType<T>(T value) {
+        public bool GenericClass_Cast_BaseType<T>(T value) {
             var instance = new Generic<T>();
             var @base = (GenericBase<T>)instance;
             return @base != null;
+        }
+
+        [InterpreterTheory]
+        [InlineData(5)]
+        public bool GenericClass_Cast_SystemInterface<T>(T value) {
+            var instance = new Enumerable<T>();
+            var system = (IEnumerable<T>)instance;
+            return system != null;
         }
     }
 }

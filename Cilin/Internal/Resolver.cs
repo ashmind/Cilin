@@ -12,7 +12,8 @@ using Mono.Cecil;
 
 namespace Cilin.Internal {
     public class Resolver {
-        private static readonly Lazy<Type> LazyTypeArray = new Lazy<Type>(() => typeof(Array));
+        private static readonly Lazy<Type> LazyArrayType = new Lazy<Type>(() => typeof(Array));
+        private static readonly Lazy<Type[]> LazyEmptyTypes = new Lazy<Type[]>(() => System.Type.EmptyTypes);
         private static readonly ParameterInfo[] DelegateParameters = new[] {
             new InterpretedParameter(typeof(object)),
             new InterpretedParameter(typeof(MethodPointerWrapper))
@@ -132,13 +133,25 @@ namespace Cilin.Internal {
             if (generic?.IsConstructed ?? false)
                 genericScope = new GenericScope(definition.GenericParameters, generic.ParametersOrArguments, genericScope);
 
+            var lazyBaseType = new Lazy<Type>(() => Type(definition.BaseType, genericScope));
             return new InterpretedType(
                 definition.Name,
                 definition.Namespace,
                 Assembly(definition.Module.Assembly),
                 declaringType,
-                new Lazy<Type>(() => Type(definition.BaseType, genericScope)),
-                new Lazy<Type[]>(() => definition.Interfaces.Select(i => Type(i, genericScope)).ToArray()),
+                lazyBaseType,
+                new Lazy<Type[]>(() => {
+                    var baseInterfaces = lazyBaseType.Value.GetInterfaces();
+                    if (baseInterfaces.Length == 0 && definition.Interfaces.Count == 0)
+                        return System.Type.EmptyTypes;
+
+                    var interfaces = new Type[baseInterfaces.Length + definition.Interfaces.Count];
+                    Array.Copy(baseInterfaces, interfaces, baseInterfaces.Length);
+                    for (var i = 0; i < definition.Interfaces.Count; i++) {
+                        interfaces[baseInterfaces.Length + i] = Type(definition.Interfaces[i], genericScope);
+                    }
+                    return interfaces;
+                }),
                 null,
                 LazyMembersOf(definition, reference, genericScope),
                 (System.Reflection.TypeAttributes)definition.Attributes,
@@ -152,7 +165,7 @@ namespace Cilin.Internal {
                 elementType.Namespace,
                 elementType.Assembly,
                 null,
-                LazyTypeArray,
+                LazyArrayType,
                 new Lazy<Type[]>(() => TypeSupport.GetArrayInterfaces(elementTypeReference).Select(i => Type(i, genericScope)).ToArray()),
                 null,
                 new LazyMember[0],
