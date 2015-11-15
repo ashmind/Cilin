@@ -12,13 +12,14 @@ using MethodAttributes = System.Reflection.MethodAttributes;
 using MethodImplAttributes = System.Reflection.MethodImplAttributes;
 
 namespace Cilin.Internal.Reflection {
-    public class InterpretedMethod : MethodInfo {
+    public class InterpretedMethod : MethodInfo, IInterpretedMethodBase {
         private readonly InterpretedType _declaringType;
         private readonly string _name;
         private readonly Type _returnType;
         private readonly ParameterInfo[] _parameters;
         private readonly MethodAttributes _attributes;
-        private readonly Func<object, object[], object> _invoke;
+        private readonly GenericDetails _generic;
+        private readonly MethodInvoker _invoker;
 
         public InterpretedMethod(
             InterpretedType declaringType,
@@ -26,21 +27,25 @@ namespace Cilin.Internal.Reflection {
             Type returnType,
             ParameterInfo[] parameters,
             MethodAttributes attributes,
-            Func<object, object[], object> invoke
+            GenericDetails generic,
+            MethodInvoker invoker,
+            object invokableDefinition
         ) {
             _declaringType = declaringType;
             _name = name;
             _returnType = returnType;
             _parameters = parameters;
             _attributes = attributes;
-            _invoke = invoke;
+            _generic = generic;
+            _invoker = invoker;
+            InvokableDefinition = invokableDefinition;
         }
 
         public override MethodAttributes Attributes => _attributes;
         public override Type DeclaringType => _declaringType;
 
         public override RuntimeMethodHandle MethodHandle {
-            get { return Delegator.GetMethod(this).MethodHandle; }
+            get { throw new NotImplementedException(); }
         }
 
         public override string Name => _name;
@@ -69,6 +74,8 @@ namespace Cilin.Internal.Reflection {
             throw new NotImplementedException();
         }
 
+        public override Type[] GetGenericArguments() => _generic?.ParametersOrArguments ?? Empty<Type>.Array;
+
         public override MethodImplAttributes GetMethodImplementationFlags() {
             throw new NotImplementedException();
         }
@@ -78,55 +85,17 @@ namespace Cilin.Internal.Reflection {
         }
 
         public override object Invoke(object obj, BindingFlags invokeAttr, Binder binder, object[] parameters, CultureInfo culture) {
-            if (IsStatic)
-                return InvokeNonVirtual(obj, invokeAttr, binder, parameters, culture);
-
-            return ((CilinObject)ObjectWrapper.UnwrapIfRequired(obj))
-                .Invoke(this, invokeAttr, binder, parameters, culture);
-        }
-
-        public object InvokeNonVirtual(object obj, BindingFlags invokeAttr, Binder binder, object[] parameters, CultureInfo culture) {
-            _declaringType.EnsureStaticConstructorRun();
-            return _invoke(obj, parameters);
+            return _invoker.Invoke(this, obj, parameters, invokeAttr, binder, culture);
         }
 
         public override bool IsDefined(Type attributeType, bool inherit) {
             throw new NotImplementedException();
         }
 
-        public override Type ReturnType {
-            get { return _returnType; }
-        }
-        
-        private class Delegator {
-            private static readonly IList<MethodInfo> _actions = new List<MethodInfo>();
-            private static readonly IList<MethodInfo> _funcs = new List<MethodInfo>();
-            
-            static Delegator() {
-                var methods = typeof(Delegator).GetMethods(BindingFlags.Instance | BindingFlags.Public);
-                _actions = methods.Where(m => m.Name.StartsWith("Action")).OrderBy(m => m.GetParameters().Length).ToArray();
-                _funcs = methods.Where(m => m.Name.StartsWith("Func")).OrderBy(m => m.GetParameters().Length).ToArray();
-            }
-            
-            public static MethodInfo GetMethod(InterpretedMethod method) {
-                var parameters = method.GetParameters();
-                var types = parameters.Select(p => Erase(p.ParameterType)).ToList();
-                if (method.ReturnType == typeof(void))
-                    return _actions[parameters.Length].MakeGenericMethod(types.ToArray());
+        public override Type ReturnType => _returnType;
 
-                types.Add(Erase(method.ReturnType));
-                return _funcs[parameters.Length].MakeGenericMethod(types.ToArray());
-            }
+        public object InvokableDefinition { get; }
 
-            private static Type Erase(Type type) {
-                return (type is InterpretedType) ? typeof(CilinObject) : type;
-            }
-
-            public void Action() {}
-            public void Action<TArg1>(TArg1 arg1) {}
-            public TResult Func<TResult>() { return default(TResult); }
-            public TResult Func<TArg1, TResult>(TArg1 arg1) { return default(TResult); }
-            public TResult Func<TArg1, TArg2, TResult>(TArg1 arg1, TArg2 arg2) { return default(TResult); }
-        }
+        InterpretedType IInterpretedMethodBase.DeclaringType => _declaringType;
     }
 }

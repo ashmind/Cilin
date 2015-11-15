@@ -8,13 +8,13 @@ using Mono.Cecil;
 
 namespace Cilin.Internal {
     public class GenericScope {
-        private readonly IReadOnlyDictionary<GenericParameter, Type> _map;
+        private readonly IReadOnlyCollection<GenericMap> _map;
         private readonly GenericScope _parent;
 
         public GenericScope(IEnumerable<GenericParameter> parameters, IEnumerable<Type> arguments, GenericScope parent = null) {
             _parent = parent;
 
-            var map = new Dictionary<GenericParameter, Type>();
+            var map = new List<GenericMap>();
             using (var parametersEnumerator = parameters.GetEnumerator())
             using (var argumentsEnumerator = arguments.GetEnumerator()) {
                 var count = 0;
@@ -23,7 +23,8 @@ namespace Cilin.Internal {
                     if (!argumentsEnumerator.MoveNext())
                         throw new ArgumentException($"Expected more than {count} arguments, got {count}.", nameof(arguments));
 
-                    map[parametersEnumerator.Current] = argumentsEnumerator.Current;
+                    var parameter = parametersEnumerator.Current;
+                    map.Add(new GenericMap(parameter.Owner, parameter.Position, argumentsEnumerator.Current));
                 }
 
                 if (argumentsEnumerator.MoveNext())
@@ -32,15 +33,34 @@ namespace Cilin.Internal {
 
             _map = map;
         }
-
-        public GenericScope(IReadOnlyDictionary<GenericParameter, Type> map, GenericScope parent = null) {
-            _map = map;
-            _parent = parent;
+        
+        public Type Resolve(GenericParameter parameter) {
+            foreach (var entry in _map) {
+                var entryOwner = entry.ParameterOwner;
+                if ((entryOwner == parameter.Owner || entryOwner == Resolve(parameter.Owner)) && entry.ParameterPosition == parameter.Position)
+                    return entry.ArgumentType;
+            }
+            return _parent?.Resolve(parameter);
         }
 
-        public Type Resolve(GenericParameter parameter) {
-            return _map.GetValueOrDefault(parameter)
-                ?? _parent?.Resolve(parameter);
+        private IGenericParameterProvider Resolve(IGenericParameterProvider owner) {
+            if (owner.IsDefinition)
+                return owner;
+
+            return (IGenericParameterProvider)(owner as TypeReference)?.Resolve()
+                ?? ((MethodReference)owner).Resolve();
+        }
+
+        private class GenericMap {
+            public GenericMap(IGenericParameterProvider parameterOwner, int parameterPosition, Type argumentType) {
+                ParameterOwner = parameterOwner;
+                ParameterPosition = parameterPosition;
+                ArgumentType = argumentType;
+            }
+
+            public IGenericParameterProvider ParameterOwner { get; }
+            public int ParameterPosition { get; }
+            public Type ArgumentType { get; }
         }
     }
 }

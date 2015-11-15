@@ -28,17 +28,23 @@ namespace Cilin {
                 }
             }
             _handlers = handlersByCode;
-            _resolver = new Resolver(this);
+            _resolver = new Resolver(new MethodInvoker(this));
         }
 
-        public object InterpretCall(IReadOnlyList<Type> declaringTypeArguments, MethodDefinition method, IReadOnlyList<TypeReference> typeArguments, object target, IReadOnlyList<object> arguments) {
+        public object InterpretCall(IReadOnlyList<Type> declaringTypeArguments, MethodDefinition method, IReadOnlyList<Type> typeArguments, object target, IReadOnlyList<object> arguments) {
             ValidateCall(method, declaringTypeArguments, typeArguments);
             var genericTypeScope = new GenericScope(
                 method.DeclaringType.GenericParameters,
                 declaringTypeArguments,
                 null
             );
-            return InterpretCall(genericTypeScope, method, typeArguments, target, arguments);
+            var genericMethodScope = new GenericScope(
+                method.GenericParameters,
+                typeArguments,
+                genericTypeScope
+            );
+
+            return InterpretCall(genericMethodScope, method, target, arguments);
         }
 
         public object InterpretCall(IReadOnlyList<TypeReference> declaringTypeArguments, MethodDefinition method, IReadOnlyList<TypeReference> typeArguments, object target, IReadOnlyList<object> arguments) {
@@ -48,16 +54,16 @@ namespace Cilin {
                 declaringTypeArguments.Select(a => _resolver.Type(a, null)),
                 null
             );
-            return InterpretCall(genericTypeScope, method, typeArguments, target, arguments);
-        }
-
-        private object InterpretCall(GenericScope genericTypeScope, MethodDefinition method, IReadOnlyList<TypeReference> typeArguments, object target, IReadOnlyList<object> arguments) {
-            var genericScope = new GenericScope(
+            var genericMethodScope = new GenericScope(
                 method.GenericParameters,
                 typeArguments.Select(a => _resolver.Type(a, genericTypeScope)),
                 genericTypeScope
             );
 
+            return InterpretCall(genericMethodScope, method, target, arguments);
+        }
+
+        private object InterpretCall(GenericScope genericScope, MethodDefinition method, object target, IReadOnlyList<object> arguments) {
             var context = new CilHandlerContext(genericScope, method, target, arguments ?? Empty<object>.Array, _resolver);
             var instruction = method.Body.Instructions[0];
             while (instruction != null) {
@@ -86,7 +92,7 @@ namespace Cilin {
             if (!method.HasBody)
                 throw new ArgumentException($"Cannot interpret method {method} that has no Body.", nameof(method));
             if (declaringTypeArguments.Count != method.DeclaringType.GenericParameters.Count)
-                throw new ArgumentException($"Type {method.DeclaringType} requires {method.DeclaringType.GenericParameters.Count} type arguments, but got {declaringTypeArguments}.");
+                throw new ArgumentException($"Type {method.DeclaringType} requires {method.DeclaringType.GenericParameters.Count} type arguments, but got {declaringTypeArguments.Count}.");
             if (typeArguments.Count != method.GenericParameters.Count)
                 throw new ArgumentException($"Method {method} requires {method.GenericParameters.Count} type arguments, but got {typeArguments.Count}.");
         }

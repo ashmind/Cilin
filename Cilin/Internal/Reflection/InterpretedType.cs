@@ -56,11 +56,14 @@ namespace Cilin.Internal.Reflection {
         }
 
         public void EnsureStaticConstructorRun() {
+            if (ContainsGenericParameters)
+                throw new NotSupportedException($"Attempted to call static constructor on open generic type {FullName}.");
+
             if (_staticConstructorStarted)
                 return;
 
             _staticConstructorStarted = true;
-            
+
             var constructor = _members.OfType<LazyMember<ConstructorInfo>>().FirstOrDefault(m => m.IsStatic);
             if (constructor == null)
                 return;
@@ -128,9 +131,7 @@ namespace Cilin.Internal.Reflection {
             throw new NotImplementedException();
         }
 
-        public override Type[] GetGenericArguments() {
-            return _generic?.Arguments ?? Empty<Type>.Array;
-        }
+        public override Type[] GetGenericArguments() => _generic?.ParametersOrArguments ?? Empty<Type>.Array;
 
         public override Type GetInterface(string name, bool ignoreCase) {
             throw new NotImplementedException();
@@ -191,13 +192,8 @@ namespace Cilin.Internal.Reflection {
             throw new NotImplementedException();
         }
 
-        protected override bool HasElementTypeImpl() {
-            throw new NotImplementedException();
-        }
-
-        protected override bool IsArrayImpl() {
-            return false;
-        }
+        protected override bool HasElementTypeImpl() => false;
+        protected override bool IsArrayImpl() => false;
 
         protected override bool IsByRefImpl() {
             throw new NotImplementedException();
@@ -208,6 +204,7 @@ namespace Cilin.Internal.Reflection {
         }
 
         public override bool IsConstructedGenericType => _generic?.IsConstructed ?? false;
+        public override bool IsGenericType => _generic != null;
 
         protected override bool IsPointerImpl() {
             throw new NotImplementedException();

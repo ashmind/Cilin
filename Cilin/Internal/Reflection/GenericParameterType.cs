@@ -26,12 +26,7 @@ namespace Cilin.Internal.Reflection {
             }
         }
 
-        public override Type BaseType {
-            get {
-                throw new NotImplementedException();
-            }
-        }
-
+        public override Type BaseType => typeof(object);
         public override string FullName => null;
 
         public override Guid GUID {
@@ -54,7 +49,7 @@ namespace Cilin.Internal.Reflection {
             }
         }
 
-        public override Type UnderlyingSystemType => null;
+        public override Type UnderlyingSystemType => this;
 
         public override ConstructorInfo[] GetConstructors(BindingFlags bindingAttr) {
             throw new NotImplementedException();
@@ -87,6 +82,8 @@ namespace Cilin.Internal.Reflection {
         public override FieldInfo[] GetFields(BindingFlags bindingAttr) {
             throw new NotImplementedException();
         }
+
+        public override Type[] GetGenericParameterConstraints() => EmptyTypes;
 
         public override Type GetInterface(string name, bool ignoreCase) {
             throw new NotImplementedException();
@@ -138,9 +135,7 @@ namespace Cilin.Internal.Reflection {
             throw new NotImplementedException();
         }
 
-        protected override bool HasElementTypeImpl() {
-            throw new NotImplementedException();
-        }
+        protected override bool HasElementTypeImpl() => false;
 
         protected override bool IsArrayImpl() {
             throw new NotImplementedException();
@@ -153,6 +148,8 @@ namespace Cilin.Internal.Reflection {
         protected override bool IsCOMObjectImpl() {
             throw new NotImplementedException();
         }
+
+        public override bool IsGenericParameter => true;
 
         protected override bool IsPointerImpl() {
             throw new NotImplementedException();

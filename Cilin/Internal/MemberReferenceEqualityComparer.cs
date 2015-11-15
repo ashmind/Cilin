@@ -39,17 +39,20 @@ namespace Cilin.Internal {
         }
 
         private bool Equals(TypeReference x, TypeReference y) {
+            if (x.IsGenericInstance || y.IsGenericInstance || x.IsGenericParameter || y.IsGenericParameter)
+                return false; // this is cached separately as parameter resolutions might depend on the scope
+
             if (x.Namespace != y.Namespace)
                 return false;
 
             if (x.Name != y.Name)
                 return false;
 
-            if (!(EqualsAs<GenericParameter>(x, y, (xp, yp) => xp == yp) ?? true))
+            /*if (!(EqualsAs<GenericParameter>(x, y, (xp, yp) => xp == yp) ?? true))
                 return false;
 
             if (!(EqualsAs<IGenericInstance>(x, y, EqualsByGenericParameters) ?? true))
-                return false;
+                return false;*/
 
             return true;
         }
@@ -90,12 +93,15 @@ namespace Cilin.Internal {
         public int GetHashCode(MemberReference obj) {
             var type = obj as TypeReference;
             if (type != null) {
+                if (type.IsGenericInstance || type.IsGenericParameter)
+                    return type.GetHashCode();
+
                 var definition = obj as TypeDefinition;
                 if (definition != null)
                     return definition.Module.FullyQualifiedName.GetHashCode() ^ definition.MetadataToken.ToInt32();
 
                 var hashCode = type.Namespace.GetHashCode() ^ type.Name.GetHashCode();
-                var parameter = type as GenericParameter;
+                /*var parameter = type as GenericParameter;
                 if (parameter != null)
                     hashCode ^= parameter.GetHashCode();
 
@@ -104,7 +110,7 @@ namespace Cilin.Internal {
                     foreach (var argument in generic.GenericArguments) {
                         hashCode ^= GetHashCode(argument);
                     }
-                }
+                }*/
 
                 return hashCode;
             }

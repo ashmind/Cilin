@@ -150,6 +150,7 @@ namespace Cilin.Internal {
         }
 
         public static Type GetTypeOf(object @object) {
+            Argument.NotNull(nameof(@object), @object);
             return (@object as ITypeOverride)?.Type ?? @object.GetType();
         }
 
