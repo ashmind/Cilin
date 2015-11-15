@@ -155,6 +155,9 @@ namespace Cilin.Internal {
         }
 
         public static string GetFullName(TypeReference reference) {
+            if (reference.IsGenericParameter || reference.IsGenericInstance)
+                throw new NotSupportedException();
+
             return AppendFullName(new StringBuilder(), reference).ToString();
         }
 
@@ -166,30 +169,7 @@ namespace Cilin.Internal {
                 AppendFullName(builder, reference.DeclaringType).Append('+');
 
             builder.Append(reference.Name);
-
-            var generic = reference as GenericInstanceType;
-            if (generic != null && generic.GenericArguments.Any(a => !(a is GenericParameter))) {
-                var arguments = generic.GenericArguments;
-                builder.Append("[[");
-                AppendAssemblyQualifiedName(builder, arguments[0]);
-                for (var i = 1; i < arguments.Count; i++) {
-                    builder.Append("],[");
-                    AppendAssemblyQualifiedName(builder, arguments[i]);
-                }
-                builder.Append("]]");
-            }
-
             return builder;
-        }
-
-        private static StringBuilder AppendAssemblyQualifiedName(StringBuilder builder, TypeReference reference) {
-            AppendFullName(builder, reference);
-            if (reference is GenericParameter)
-                return builder;
-
-            return builder
-                .Append(", ")
-                .Append(reference.Resolve().Module.Assembly.FullName);
         }
     }
 }
