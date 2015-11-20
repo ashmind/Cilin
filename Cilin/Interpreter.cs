@@ -11,6 +11,7 @@ using Mono.Cecil.Cil;
 namespace Cilin {
     public class Interpreter {
         private readonly IReadOnlyDictionary<OpCode, ICilHandler> _handlers;
+        private readonly MethodInvoker _invoker;
         private readonly Resolver _resolver;
 
         public Interpreter() : this(
@@ -28,7 +29,8 @@ namespace Cilin {
                 }
             }
             _handlers = handlersByCode;
-            _resolver = new Resolver(new MethodInvoker(this));
+            _invoker = new MethodInvoker(this);
+            _resolver = new Resolver(_invoker);
         }
 
         public object InterpretCall(IReadOnlyList<Type> declaringTypeArguments, MethodDefinition method, IReadOnlyList<Type> typeArguments, object target, IReadOnlyList<object> arguments) {
@@ -64,7 +66,7 @@ namespace Cilin {
         }
 
         private object InterpretCall(GenericScope genericScope, MethodDefinition method, object target, IReadOnlyList<object> arguments) {
-            var context = new CilHandlerContext(genericScope, method, target, arguments ?? Empty<object>.Array, _resolver);
+            var context = new CilHandlerContext(genericScope, method, target, arguments ?? Empty<object>.Array, _resolver, _invoker);
             var instruction = method.Body.Instructions[0];
             while (instruction != null) {
                 if (instruction.OpCode == OpCodes.Ret) {

@@ -8,8 +8,8 @@ using System.Threading.Tasks;
 using Cilin.Internal.Reflection;
 
 namespace Cilin.Internal.State {
-    public class CilinDelegate : ITypeOverride, ICustomInvoker {
-        public CilinDelegate(object target, MethodPointerWrapper pointer, Type delegateType) {
+    public class CilinDelegate : INonRuntimeObject, ICustomInvoker {
+        public CilinDelegate(object target, NonRuntimeMethodPointer pointer, Type delegateType) {
             Target = target;
             Pointer = pointer;
             DelegateType = delegateType;
@@ -26,9 +26,9 @@ namespace Cilin.Internal.State {
         }
 
         public object Target { get; }
-        public MethodPointerWrapper Pointer { get; }
+        public NonRuntimeMethodPointer Pointer { get; }
         public Type DelegateType { get; }
 
-        Type ITypeOverride.Type => DelegateType;
+        Type INonRuntimeObject.Type => DelegateType;
     }
 }

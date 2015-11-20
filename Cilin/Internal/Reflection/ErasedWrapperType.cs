@@ -54,23 +54,16 @@ namespace Cilin.Internal.Reflection {
             }
         }
 
-        public override Type BaseType {
-            get {
-                throw new NotImplementedException();
-            }
-        }
-
-        public override Type UnderlyingSystemType {
-            get {
-                throw new NotImplementedException();
-            }
-        }
+        public override Type BaseType => FullType.BaseType;
+        public override Type UnderlyingSystemType => RuntimeType.UnderlyingSystemType;
 
         public override string Name {
             get {
                 throw new NotImplementedException();
             }
         }
+
+        public override bool IsConstructedGenericType => true;
 
         public override Type[] GetGenericArguments() {
             if (_genericArguments == null) {
@@ -213,9 +206,7 @@ namespace Cilin.Internal.Reflection {
             throw new NotImplementedException();
         }
 
-        protected override bool HasElementTypeImpl() {
-            throw new NotImplementedException();
-        }
+        protected override bool HasElementTypeImpl() => false;
 
         public override object[] GetCustomAttributes(bool inherit) {
             throw new NotImplementedException();

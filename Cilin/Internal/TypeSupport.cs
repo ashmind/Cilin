@@ -7,22 +7,20 @@ using System.Threading.Tasks;
 using Cilin.Internal.Reflection;
 using Cilin.Internal.State;
 using Mono.Cecil;
+using AshMind.Extensions;
 
 namespace Cilin.Internal {
     public static class TypeSupport {
-        public static class References {
+        public static class Definitions {
             private static ModuleDefinition _mscorlib = ModuleDefinition.ReadModule(typeof(object).Assembly.Location);
 
-            public static TypeReference IEnumerable { get; } = GetTypeFromMscorlib(typeof(IEnumerable));
-            public static TypeReference IEnumerableOfT { get; } = GetTypeFromMscorlib(typeof(IEnumerable<>));
-            public static TypeReference ICollection { get; } = GetTypeFromMscorlib(typeof(ICollection));
-            public static TypeReference IReadOnlyCollectionOfT { get; } = GetTypeFromMscorlib(typeof(IReadOnlyCollection<>));
-            public static TypeReference ICollectionOfT { get; } = GetTypeFromMscorlib(typeof(ICollection<>));
-            public static TypeReference IList { get; } = GetTypeFromMscorlib(typeof(IList));
-            public static TypeReference IReadOnlyListOfT { get; } = GetTypeFromMscorlib(typeof(IReadOnlyList<>));
-            public static TypeReference IListOfT { get; } = GetTypeFromMscorlib(typeof(IList<>));
+            public static TypeDefinition IEnumerableOfT { get; } = GetTypeFromMscorlib(typeof(IEnumerable<>));
+            public static TypeDefinition IReadOnlyCollectionOfT { get; } = GetTypeFromMscorlib(typeof(IReadOnlyCollection<>));
+            public static TypeDefinition ICollectionOfT { get; } = GetTypeFromMscorlib(typeof(ICollection<>));
+            public static TypeDefinition IReadOnlyListOfT { get; } = GetTypeFromMscorlib(typeof(IReadOnlyList<>));
+            public static TypeDefinition IListOfT { get; } = GetTypeFromMscorlib(typeof(IList<>));
 
-            private static TypeReference GetTypeFromMscorlib(Type type) {
+            private static TypeDefinition GetTypeFromMscorlib(Type type) {
                 var result = _mscorlib.GetType(type.Namespace + "." + type.Name);
                 if (result == null)
                     throw new Exception($"Failed to find {type} in mscorlib.");
@@ -150,17 +148,6 @@ namespace Cilin.Internal {
             return Array.CreateInstance(arrayType.GetElementType(), length);
         }
 
-        public static IEnumerable<TypeReference> GetArrayInterfaces(TypeReference elementType) {
-            yield return References.IEnumerable;
-            yield return References.ICollection;
-            yield return References.IList;
-            yield return MakeGeneric(References.IEnumerableOfT, elementType);
-            yield return MakeGeneric(References.IReadOnlyCollectionOfT, elementType);
-            yield return MakeGeneric(References.ICollectionOfT, elementType);
-            yield return MakeGeneric(References.IReadOnlyListOfT, elementType);
-            yield return MakeGeneric(References.IListOfT, elementType);
-        }
-
         private static TypeReference MakeGeneric(TypeReference openType, TypeReference genericArgument) {
             return new GenericInstanceType(openType) { GenericArguments = { genericArgument }};
         }
@@ -182,12 +169,14 @@ namespace Cilin.Internal {
 
         public static Type GetTypeOf(object @object) {
             Argument.NotNull(nameof(@object), @object);
-            return (@object as ITypeOverride)?.Type ?? @object.GetType();
+            return (@object as INonRuntimeObject)?.Type ?? @object.GetType();
         }
 
         public static bool IsRuntime(Type type) {
             return !(type is NonRuntimeType);
         }
+
+        public static bool IsDelegate(Type declaringType) => declaringType.IsSubclassOf<Delegate>();
 
         public static string GetFullName(TypeDefinition definition) {
             if (definition.IsGenericParameter)

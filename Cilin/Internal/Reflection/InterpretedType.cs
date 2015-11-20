@@ -12,9 +12,11 @@ using Mono.Cecil;
 namespace Cilin.Internal.Reflection {
     public abstract class InterpretedType : NonRuntimeType {
         private bool _staticConstructorStarted;
+
         private readonly Lazy<Type> _baseType;
         private readonly Lazy<Type[]> _interfaces;
-        private readonly IReadOnlyCollection<LazyMember> _members;
+        private readonly Lazy<IReadOnlyCollection<LazyMember>> _members;
+        private readonly Lazy<IReadOnlyDictionary<Type, InterfaceMapping>> _interfaceMaps;
 
         private Lazy<string> _fullName;
         private Lazy<string> _assemblyQualifiedName;
@@ -28,10 +30,11 @@ namespace Cilin.Internal.Reflection {
         ) {
             _baseType = baseType;
             _interfaces = interfaces;
-            _members = getMembers(this);
+            _members = new Lazy<IReadOnlyCollection<LazyMember>>(() => getMembers(this));
 
             _fullName = new Lazy<string>(GetFullName);
             _assemblyQualifiedName = new Lazy<string>(GetAssemblyQualifiedName);
+            _interfaceMaps = new Lazy<IReadOnlyDictionary<Type, InterfaceMapping>>(GetInterfaceMaps);
 
             StaticData = new StaticData(this);
         }
@@ -59,16 +62,23 @@ namespace Cilin.Internal.Reflection {
         }
 
         public override Type[] GetInterfaces() => _interfaces.Value;
+        public override InterfaceMapping GetInterfaceMap(Type interfaceType) {
+            InterfaceMapping mapping;
+            if (!_interfaceMaps.Value.TryGetValue(interfaceType, out mapping))
+                throw new ArgumentException($"Interface {interfaceType} was not found on {this}.");
 
+            return mapping;
+        }
         public override ConstructorInfo[] GetConstructors(BindingFlags bindingAttr) => GetMembers<ConstructorInfo>(bindingAttr);
         public override MethodInfo[] GetMethods(BindingFlags bindingAttr) => GetMembers<MethodInfo>(bindingAttr);
+        public IReadOnlyCollection<LazyMember> GetLazyMembers() => _members.Value;
 
         public override MemberInfo[] FindMembers(MemberTypes memberType, BindingFlags bindingAttr, MemberFilter filter, object filterCriteria) {
             if (filter != FilterName)
                 return base.FindMembers(memberType, bindingAttr, filter, filterCriteria);
 
             var results = new List<MemberInfo>();
-            foreach (var member in _members) {
+            foreach (var member in _members.Value) {
                 if (member.Name != (string)filterCriteria)
                     continue;
 
@@ -87,7 +97,7 @@ namespace Cilin.Internal.Reflection {
         private T[] GetMembers<T>(BindingFlags bindingAttr)
             where T : MemberInfo
         {
-            return _members
+            return _members.Value
                 .OfType<LazyMember<T>>()
                 .Where(m => MemberMatches(m, bindingAttr))
                 .Select(m => m.Info)
@@ -128,6 +138,25 @@ namespace Cilin.Internal.Reflection {
                 return false;
 
             return true;
+        }
+
+        private IReadOnlyDictionary<Type, InterfaceMapping> GetInterfaceMaps() {
+            var maps = new Dictionary<Type, InterfaceMapping>();
+            foreach (var @interface in GetInterfaces()) {
+                var methods = @interface.GetMethods(BindingFlags.Public | BindingFlags.Instance);
+                var mapping = new InterfaceMapping {
+                    InterfaceType = @interface,
+                    InterfaceMethods = methods,
+                    TargetType = this,
+                    TargetMethods = new MethodInfo[methods.Length]
+                };
+
+                for (var i = 0; i < methods.Length; i++) {
+                    mapping.TargetMethods[i] = InterpretedMethod.FindTargetMethod(methods[i], this);
+                }
+                maps.Add(@interface, mapping);
+            }
+            return maps;
         }
 
         protected abstract string GetFullName();

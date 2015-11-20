@@ -8,7 +8,7 @@ using System.Threading.Tasks;
 using Cilin.Internal.Reflection;
 
 namespace Cilin.Internal.State {
-    public class CilinObject : BaseData, ITypeOverride {
+    public class CilinObject : BaseData, INonRuntimeObject {
         public CilinObject(InterpretedType objectType) {
             if (objectType.IsAbstract || objectType.IsInterface)
                 throw new ArgumentException($"{nameof(CilinObject)} must have a concrete type (provided {objectType})", nameof(objectType));
@@ -18,6 +18,6 @@ namespace Cilin.Internal.State {
 
         public InterpretedType ObjectType { get; }
 
-        Type ITypeOverride.Type => ObjectType;
+        Type INonRuntimeObject.Type => ObjectType;
     }
 }

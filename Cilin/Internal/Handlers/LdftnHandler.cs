@@ -18,7 +18,7 @@ namespace Cilin.Internal.Handlers {
             var method = context.Resolver.Method((MethodReference)instruction.Operand, context.GenericScope);
             var interpreted = method as InterpretedMethod;
             if (interpreted != null) {
-                context.Stack.Push(new MethodPointerWrapper(interpreted));
+                context.Stack.Push(new NonRuntimeMethodPointer(interpreted));
                 return;
             }
 

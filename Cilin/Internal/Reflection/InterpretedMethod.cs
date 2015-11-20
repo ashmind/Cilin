@@ -17,6 +17,7 @@ namespace Cilin.Internal.Reflection {
         private readonly string _name;
         private readonly Type _returnType;
         private readonly ParameterInfo[] _parameters;
+        private readonly Lazy<MethodInfo[]> _explicitOverrides;
         private readonly MethodAttributes _attributes;
         private readonly GenericDetails _generic;
         private readonly MethodInvoker _invoker;
@@ -28,6 +29,7 @@ namespace Cilin.Internal.Reflection {
             string name,
             Type returnType,
             ParameterInfo[] parameters,
+            Lazy<MethodInfo[]> explicitOverrides,
             MethodAttributes attributes,
             GenericDetails generic,
             MethodInvoker invoker,
@@ -37,6 +39,7 @@ namespace Cilin.Internal.Reflection {
             _name = name;
             _returnType = returnType;
             _parameters = parameters;
+            _explicitOverrides = explicitOverrides;
             _attributes = attributes;
             _generic = generic;
             _invoker = invoker;
@@ -67,17 +70,16 @@ namespace Cilin.Internal.Reflection {
         public override MethodInfo GetBaseDefinition() {
             if (!IsVirtual || IsAbstract || IsStatic || DeclaringType == null || DeclaringType.IsInterface)
                 return this;
-            
+
             if (_baseDefinition != null)
                 return _baseDefinition;
 
-            var baseMethods = DeclaringType.BaseType.FindMembers(MemberTypes.Method, BindingFlags.Default, Type.FilterName, Name);
-            if (baseMethods.Length != 1)
-                throw new NotImplementedException();
-
-            _baseDefinition = ((MethodInfo)baseMethods[0]).GetBaseDefinition();
+            // not fully correct
+            _baseDefinition = FindTargetMethod(this, DeclaringType.BaseType).GetBaseDefinition();
             return _baseDefinition;
         }
+
+        public MethodInfo[] GetExplicitOverrides() => _explicitOverrides.Value;
 
         public override object[] GetCustomAttributes(bool inherit) {
             throw new NotImplementedException();
@@ -93,9 +95,7 @@ namespace Cilin.Internal.Reflection {
             throw new NotImplementedException();
         }
 
-        public override ParameterInfo[] GetParameters() {
-            return _parameters;
-        }
+        public override ParameterInfo[] GetParameters() => _parameters;
 
         public override object Invoke(object obj, BindingFlags invokeAttr, Binder binder, object[] parameters, CultureInfo culture) {
             return _invoker.Invoke(this, obj, parameters, invokeAttr, binder, culture);
@@ -112,5 +112,38 @@ namespace Cilin.Internal.Reflection {
         InterpretedType IInterpretedMethodBase.DeclaringType => _declaringType;
 
         public override string ToString() => Name;
+
+        public static MethodInfo FindTargetMethod(MethodInfo method, Type targetType) {
+            var nameMatches = targetType.FindMembers(MemberTypes.Method, BindingFlags.Default, Type.FilterName, method.Name);
+            MethodInfo match = null;
+            if (nameMatches.Length > 0)
+                match = FindTargetMethodByName(method, nameMatches);
+
+            match = match ?? FindTargetMethodByExplicitOverrides(method, targetType);
+            if (match == null)
+                throw new MissingMethodException($"Could not find method matching {method} on type {targetType}.");
+
+            return match;
+        }
+
+        private static MethodInfo FindTargetMethodByExplicitOverrides(MethodInfo method, Type targetType) {
+            if (TypeSupport.IsRuntime(targetType))
+                throw new NotImplementedException();
+
+            foreach (var candidate in targetType.GetMethods(BindingFlags.Instance | BindingFlags.NonPublic)) {
+                var overrides = ((InterpretedMethod)candidate).GetExplicitOverrides();
+                if (overrides.Contains(method))
+                    return candidate;
+            }
+
+            return null;
+        }
+
+        private static MethodInfo FindTargetMethodByName(MethodInfo method, MemberInfo[] nameMatches) {
+            if (nameMatches.Length > 1)
+                throw new NotImplementedException();
+
+            return (MethodInfo)nameMatches[0];
+        }
     }
 }

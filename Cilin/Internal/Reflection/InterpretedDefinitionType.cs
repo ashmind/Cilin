@@ -17,7 +17,6 @@ namespace Cilin.Internal.Reflection {
         private readonly string _namespace;
         private readonly Assembly _assembly;
         private readonly Type _declaringType;
-        private readonly Type _elementType;
         private readonly TypeAttributes _attributes;
         private readonly Type[] _genericParameters;
 
@@ -28,7 +27,6 @@ namespace Cilin.Internal.Reflection {
             Type declaringType,
             Lazy<Type> baseType,
             Lazy<Type[]> interfaces,
-            Type elementType,
             Func<Type, IReadOnlyCollection<LazyMember>> getMembers,
             TypeAttributes attributes,
             Type[] genericParameters
@@ -37,7 +35,6 @@ namespace Cilin.Internal.Reflection {
             _namespace = @namespace;
             _assembly = assembly;
             _declaringType = declaringType;
-            _elementType = elementType;
             _attributes = attributes;
             _genericParameters = genericParameters;
         }
@@ -67,7 +64,7 @@ namespace Cilin.Internal.Reflection {
             throw new NotImplementedException();
         }
 
-        public override Type GetElementType() => _elementType;
+        public override Type GetElementType() => null;
 
         public override EventInfo GetEvent(string name, BindingFlags bindingAttr) {
             throw new NotImplementedException();
@@ -132,7 +129,7 @@ namespace Cilin.Internal.Reflection {
         }
 
         protected override bool HasElementTypeImpl() => false;
-        protected override bool IsArrayImpl() => _elementType != null;
+        protected override bool IsArrayImpl() => false;
         protected override bool IsByRefImpl() => false;
 
         protected override bool IsCOMObjectImpl() {

@@ -4,22 +4,18 @@ using System.Globalization;
 using System.Linq;
 using System.Reflection;
 using System.Text;
+using System.Threading;
 using System.Threading.Tasks;
 
 namespace Cilin.Internal.Reflection {
-    public class InterpretedGenericPathType : InterpretedType {
-        private readonly Type _genericDefinition;
-        private readonly Type[] _genericArguments;
+    public class InterpretedArrayType : InterpretedType {
+        private static readonly Lazy<Type> LazyArrayType = new Lazy<Type>(() => typeof(Array), LazyThreadSafetyMode.PublicationOnly);
 
-        public InterpretedGenericPathType(
-            Type genericDefinition,
-            Lazy<Type> baseType,
-            Lazy<Type[]> interfaces,
-            Func<Type, IReadOnlyCollection<LazyMember>> getMembers,
-            Type[] genericArguments
-        ) : base(baseType, interfaces, getMembers) {
-            _genericDefinition = genericDefinition;
-            _genericArguments = genericArguments;
+        private readonly Type _elementType;
+
+        public InterpretedArrayType(Type elementType, Lazy<Type[]> interfaces, Func<Type, IReadOnlyCollection<LazyMember>> getMembers) : base(LazyArrayType, interfaces, getMembers) {
+            _elementType = elementType;
+            Name = elementType.Name + "[]";
         }
 
         public override Assembly Assembly {
@@ -40,7 +36,7 @@ namespace Cilin.Internal.Reflection {
             }
         }
 
-        public override string Name => _genericDefinition.Name;
+        public override string Name { get; }
 
         public override string Namespace {
             get {
@@ -76,8 +72,6 @@ namespace Cilin.Internal.Reflection {
             throw new NotImplementedException();
         }
 
-        public override Type[] GetGenericArguments() => _genericArguments;
-
         public override Type GetInterface(string name, bool ignoreCase) {
             throw new NotImplementedException();
         }
@@ -106,9 +100,15 @@ namespace Cilin.Internal.Reflection {
             throw new NotImplementedException();
         }
 
-        protected override TypeAttributes GetAttributeFlagsImpl() => _genericDefinition.Attributes;
+        protected override TypeAttributes GetAttributeFlagsImpl() {
+            throw new NotImplementedException();
+        }
 
         protected override ConstructorInfo GetConstructorImpl(BindingFlags bindingAttr, Binder binder, CallingConventions callConvention, Type[] types, ParameterModifier[] modifiers) {
+            throw new NotImplementedException();
+        }
+
+        protected override string GetFullName() {
             throw new NotImplementedException();
         }
 
@@ -120,7 +120,9 @@ namespace Cilin.Internal.Reflection {
             throw new NotImplementedException();
         }
 
-        protected override bool HasElementTypeImpl() => false;
+        protected override bool HasElementTypeImpl() {
+            throw new NotImplementedException();
+        }
 
         protected override bool IsArrayImpl() {
             throw new NotImplementedException();
@@ -134,8 +136,6 @@ namespace Cilin.Internal.Reflection {
             throw new NotImplementedException();
         }
 
-        public override bool IsConstructedGenericType => true;
-
         protected override bool IsPointerImpl() {
             throw new NotImplementedException();
         }
@@ -143,22 +143,5 @@ namespace Cilin.Internal.Reflection {
         protected override bool IsPrimitiveImpl() {
             throw new NotImplementedException();
         }
-
-        protected override string GetFullName() {
-            var builder = new StringBuilder();
-            builder.Append(_genericDefinition.FullName);
-            if (_genericArguments.Length == 0)
-                return builder.ToString();
-            builder.Append("[[")
-                    .Append(_genericArguments[0].AssemblyQualifiedName);
-
-            for (var i = 1; i < _genericArguments.Length; i++) {
-                builder.Append("],[")
-                        .Append(_genericArguments[i].AssemblyQualifiedName);
-            }
-            builder.Append("]]");
-            return builder.ToString();
-        }
-
     }
 }

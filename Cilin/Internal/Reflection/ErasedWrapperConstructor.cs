@@ -21,17 +21,8 @@ namespace Cilin.Internal.Reflection {
             get { return _runtimeConstructor.MetadataToken; }
         }
 
-        public override MethodAttributes Attributes {
-            get {
-                throw new NotImplementedException();
-            }
-        }
-
-        public override Type DeclaringType {
-            get {
-                throw new NotImplementedException();
-            }
-        }
+        public override MethodAttributes Attributes => _runtimeConstructor.Attributes;
+        public override Type DeclaringType => _wrapperType;
 
         public override RuntimeMethodHandle MethodHandle {
             get {

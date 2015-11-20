@@ -14,13 +14,14 @@ namespace Cilin {
         private readonly IReadOnlyList<VariableDefinition> _variableDefinitions;
         private readonly IList<object> _variablesMutable;
 
-        public CilHandlerContext(GenericScope genericScope, MethodDefinition method, object target, IReadOnlyList<object> arguments, Resolver resolver) {
+        public CilHandlerContext(GenericScope genericScope, MethodDefinition method, object target, IReadOnlyList<object> arguments, Resolver resolver, MethodInvoker invoker) {
             _variableDefinitions = method.Body.Variables.OrderBy(v => v.Index).ToList();
             var variables = new List<object>(new object[_variableDefinitions.Count]);
             Variables = variables;
             _variablesMutable = variables;
 
             Resolver = resolver;
+            Invoker = invoker;
             Method = method;
             Target = target;
             Arguments = arguments;
@@ -28,6 +29,7 @@ namespace Cilin {
         }
 
         public Resolver Resolver { get; }
+        public MethodInvoker Invoker { get; }
         public MethodDefinition Method { get; }
         public object Target { get; }
         public IReadOnlyList<object> Arguments { get; }

@@ -25,7 +25,8 @@ namespace Cilin.Internal {
             }
 
             if (instruction.OpCode == OpCodes.Newobj) {
-                context.Stack.Push(((ConstructorInfo)method).Invoke(arguments));
+                var instance = context.Invoker.Invoke(method, null, arguments);
+                context.Stack.Push(instance);
                 return;
             }
 
@@ -33,7 +34,7 @@ namespace Cilin.Internal {
             if (!method.IsStatic)
                 target = TypeSupport.Convert(context.Stack.Pop(), method.DeclaringType);
 
-            var result = method.Invoke(target, arguments);
+            var result = context.Invoker.Invoke(method, target, arguments);
             if (!method.IsConstructor && ((MethodInfo)method).ReturnType != typeof(void))
                 context.Stack.Push(result);
         }

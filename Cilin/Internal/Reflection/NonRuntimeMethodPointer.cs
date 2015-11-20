@@ -6,10 +6,12 @@ using System.Threading.Tasks;
 using Cilin.Internal.Reflection;
 
 namespace Cilin.Internal.State {
-    public class MethodPointerWrapper {
+    public class NonRuntimeMethodPointer : INonRuntimeObject {
         public InterpretedMethod Method { get; }
-        public MethodPointerWrapper(InterpretedMethod method) {
+        public NonRuntimeMethodPointer(InterpretedMethod method) {
             Method = method;
         }
+
+        Type INonRuntimeObject.Type => typeof(IntPtr);
     }
 }

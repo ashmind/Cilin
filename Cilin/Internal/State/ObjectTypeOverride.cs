@@ -6,9 +6,9 @@ using System.Threading.Tasks;
 using Cilin.Internal.Reflection;
 
 namespace Cilin.Internal.State {
-    public class ObjectTypeOverride : ITypeOverride, IObjectWrapper {
-        public ObjectTypeOverride(object @object, Type type) {
-            if (@object is ITypeOverride)
+    public class ObjectTypeOverride : INonRuntimeObject, IObjectWrapper {
+        public ObjectTypeOverride(object @object, NonRuntimeType type) {
+            if (@object is INonRuntimeObject)
                 throw new ArgumentException($"Attempted to override type twice ({@object}).");
 
             if (TypeSupport.GetTypeOf(@object) == type)

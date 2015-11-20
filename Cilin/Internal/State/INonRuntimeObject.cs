@@ -6,7 +6,7 @@ using System.Threading.Tasks;
 using Cilin.Internal.Reflection;
 
 namespace Cilin.Internal.State {
-    public interface ITypeOverride {
+    public interface INonRuntimeObject {
         Type Type { get; }
     }
 }
