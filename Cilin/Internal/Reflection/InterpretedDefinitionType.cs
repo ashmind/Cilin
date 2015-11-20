@@ -5,29 +5,44 @@ using System.Linq;
 using System.Reflection;
 using System.Text;
 using System.Threading.Tasks;
+using AshMind.Extensions;
+using Cilin.Internal.State;
+using Mono.Cecil;
+
+using TypeAttributes = System.Reflection.TypeAttributes;
 
 namespace Cilin.Internal.Reflection {
-    public class GenericParameterType : NonRuntimeType {
+    public class InterpretedDefinitionType : InterpretedType {
         private readonly string _name;
+        private readonly string _namespace;
+        private readonly Assembly _assembly;
+        private readonly Type _declaringType;
+        private readonly Type _elementType;
+        private readonly TypeAttributes _attributes;
+        private readonly Type[] _genericParameters;
 
-        public GenericParameterType(string name) {
+        public InterpretedDefinitionType(
+            string name,
+            string @namespace,
+            Assembly assembly,
+            Type declaringType,
+            Lazy<Type> baseType,
+            Lazy<Type[]> interfaces,
+            Type elementType,
+            Func<Type, IReadOnlyCollection<LazyMember>> getMembers,
+            TypeAttributes attributes,
+            Type[] genericParameters
+        ) : base(baseType, interfaces, getMembers) {
             _name = name;
+            _namespace = @namespace;
+            _assembly = assembly;
+            _declaringType = declaringType;
+            _elementType = elementType;
+            _attributes = attributes;
+            _genericParameters = genericParameters;
         }
 
-        public override Assembly Assembly {
-            get {
-                throw new NotImplementedException();
-            }
-        }
-
-        public override string AssemblyQualifiedName {
-            get {
-                throw new NotImplementedException();
-            }
-        }
-
-        public override Type BaseType => typeof(object);
-        public override string FullName => null;
+        public override Assembly Assembly => _assembly;
 
         public override Guid GUID {
             get {
@@ -42,19 +57,8 @@ namespace Cilin.Internal.Reflection {
         }
 
         public override string Name => _name;
-
-        public override string Namespace {
-            get {
-                throw new NotImplementedException();
-            }
-        }
-
-        public override Type UnderlyingSystemType => this;
-
-        public override ConstructorInfo[] GetConstructors(BindingFlags bindingAttr) {
-            throw new NotImplementedException();
-        }
-
+        public override string Namespace => _namespace;
+        
         public override object[] GetCustomAttributes(bool inherit) {
             throw new NotImplementedException();
         }
@@ -63,9 +67,7 @@ namespace Cilin.Internal.Reflection {
             throw new NotImplementedException();
         }
 
-        public override Type GetElementType() {
-            throw new NotImplementedException();
-        }
+        public override Type GetElementType() => _elementType;
 
         public override EventInfo GetEvent(string name, BindingFlags bindingAttr) {
             throw new NotImplementedException();
@@ -83,24 +85,16 @@ namespace Cilin.Internal.Reflection {
             throw new NotImplementedException();
         }
 
-        public override Type[] GetGenericParameterConstraints() => EmptyTypes;
+        public override Type[] GetGenericArguments() => _genericParameters;
 
         public override Type GetInterface(string name, bool ignoreCase) {
-            throw new NotImplementedException();
-        }
-
-        public override Type[] GetInterfaces() {
             throw new NotImplementedException();
         }
 
         public override MemberInfo[] GetMembers(BindingFlags bindingAttr) {
             throw new NotImplementedException();
         }
-
-        public override MethodInfo[] GetMethods(BindingFlags bindingAttr) {
-            throw new NotImplementedException();
-        }
-
+        
         public override Type GetNestedType(string name, BindingFlags bindingAttr) {
             throw new NotImplementedException();
         }
@@ -121,7 +115,9 @@ namespace Cilin.Internal.Reflection {
             throw new NotImplementedException();
         }
 
-        protected override TypeAttributes GetAttributeFlagsImpl() => TypeAttributes.Public;
+        protected override TypeAttributes GetAttributeFlagsImpl() {
+            return _attributes;
+        }
 
         protected override ConstructorInfo GetConstructorImpl(BindingFlags bindingAttr, Binder binder, CallingConventions callConvention, Type[] types, ParameterModifier[] modifiers) {
             throw new NotImplementedException();
@@ -136,27 +132,55 @@ namespace Cilin.Internal.Reflection {
         }
 
         protected override bool HasElementTypeImpl() => false;
-
-        protected override bool IsArrayImpl() {
-            throw new NotImplementedException();
-        }
-
-        protected override bool IsByRefImpl() {
-            throw new NotImplementedException();
-        }
+        protected override bool IsArrayImpl() => _elementType != null;
+        protected override bool IsByRefImpl() => false;
 
         protected override bool IsCOMObjectImpl() {
             throw new NotImplementedException();
         }
 
-        public override bool IsGenericParameter => true;
+        public override bool IsConstructedGenericType => false;
+        public override bool IsGenericType => _genericParameters.Length > 0;
 
         protected override bool IsPointerImpl() {
             throw new NotImplementedException();
         }
 
-        protected override bool IsPrimitiveImpl() {
+        protected override bool IsPrimitiveImpl() => false;
+
+        public override bool IsInstanceOfType(object o) {
+            if (o == null)
+                return false;
+
+            return IsAssignableFrom(TypeSupport.GetTypeOf(o));
+        }
+
+        public override bool IsAssignableFrom(Type c) {
+            if (c == null)
+                return false;
+
+            return TypeSupport.IsAssignableFrom(this, c);
+        }
+
+        public override Type DeclaringType => _declaringType;
+
+        public override Type MakeArrayType() {
+            //if (_arrayType != null)
+            //    return _arrayType;
+
+            //_arrayType = _resolver.Type(new ArrayType(_reference), null);
+            //return _arrayType;
             throw new NotImplementedException();
+        }
+
+        protected override string GetFullName() {
+            if (IsNested)
+                return DeclaringType.FullName + "+" + Name;
+
+            if (!Namespace.IsNullOrEmpty())
+                return Namespace + "." + Name;
+
+            return Name;
         }
     }
 }

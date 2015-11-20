@@ -21,6 +21,8 @@ namespace Cilin.Internal.Reflection {
         private readonly GenericDetails _generic;
         private readonly MethodInvoker _invoker;
 
+        private MethodInfo _baseDefinition;
+
         public InterpretedMethod(
             InterpretedType declaringType,
             string name,
@@ -63,7 +65,18 @@ namespace Cilin.Internal.Reflection {
         }
 
         public override MethodInfo GetBaseDefinition() {
-            throw new NotImplementedException();
+            if (!IsVirtual || IsAbstract || IsStatic || DeclaringType == null || DeclaringType.IsInterface)
+                return this;
+            
+            if (_baseDefinition != null)
+                return _baseDefinition;
+
+            var baseMethods = DeclaringType.BaseType.FindMembers(MemberTypes.Method, BindingFlags.Default, Type.FilterName, Name);
+            if (baseMethods.Length != 1)
+                throw new NotImplementedException();
+
+            _baseDefinition = ((MethodInfo)baseMethods[0]).GetBaseDefinition();
+            return _baseDefinition;
         }
 
         public override object[] GetCustomAttributes(bool inherit) {
@@ -97,5 +110,7 @@ namespace Cilin.Internal.Reflection {
         public object InvokableDefinition { get; }
 
         InterpretedType IInterpretedMethodBase.DeclaringType => _declaringType;
+
+        public override string ToString() => Name;
     }
 }

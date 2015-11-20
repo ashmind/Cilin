@@ -115,7 +115,7 @@ namespace Cilin.Internal {
             if (targetType == sourceType)
                 return true;
 
-            if (!(targetType is INonRuntimeType) && !(sourceType is INonRuntimeType))
+            if (IsRuntime(targetType) && IsRuntime(sourceType))
                 return targetType.IsAssignableFrom(sourceType);
 
             if (sourceType.IsSubclassOf(targetType))
@@ -185,21 +185,25 @@ namespace Cilin.Internal {
             return (@object as ITypeOverride)?.Type ?? @object.GetType();
         }
 
-        public static string GetFullName(TypeReference reference) {
-            if (reference.IsGenericParameter || reference.IsGenericInstance)
-                throw new NotSupportedException();
-
-            return AppendFullName(new StringBuilder(), reference).ToString();
+        public static bool IsRuntime(Type type) {
+            return !(type is NonRuntimeType);
         }
 
-        private static StringBuilder AppendFullName(StringBuilder builder, TypeReference reference) {
-            if (!string.IsNullOrEmpty(reference.Namespace))
-                builder.Append(reference.Namespace).Append('.');
+        public static string GetFullName(TypeDefinition definition) {
+            if (definition.IsGenericParameter)
+                throw new NotSupportedException();
 
-            if (reference.IsNested)
-                AppendFullName(builder, reference.DeclaringType).Append('+');
+            return AppendFullName(new StringBuilder(), definition).ToString();
+        }
 
-            builder.Append(reference.Name);
+        private static StringBuilder AppendFullName(StringBuilder builder, TypeDefinition definition) {
+            if (!string.IsNullOrEmpty(definition.Namespace))
+                builder.Append(definition.Namespace).Append('.');
+
+            if (definition.IsNested)
+                AppendFullName(builder, definition.DeclaringType).Append('+');
+
+            builder.Append(definition.Name);
             return builder;
         }
     }

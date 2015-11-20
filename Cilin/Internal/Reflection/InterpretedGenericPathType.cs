@@ -7,11 +7,19 @@ using System.Text;
 using System.Threading.Tasks;
 
 namespace Cilin.Internal.Reflection {
-    public class GenericParameterType : NonRuntimeType {
-        private readonly string _name;
+    public class InterpretedGenericPathType : InterpretedType {
+        private readonly Type _genericDefinition;
+        private readonly Type[] _genericArguments;
 
-        public GenericParameterType(string name) {
-            _name = name;
+        public InterpretedGenericPathType(
+            Type genericDefinition,
+            Lazy<Type> baseType,
+            Lazy<Type[]> interfaces,
+            Func<Type, IReadOnlyCollection<LazyMember>> getMembers,
+            Type[] genericArguments
+        ) : base(baseType, interfaces, getMembers) {
+            _genericDefinition = genericDefinition;
+            _genericArguments = genericArguments;
         }
 
         public override Assembly Assembly {
@@ -19,15 +27,6 @@ namespace Cilin.Internal.Reflection {
                 throw new NotImplementedException();
             }
         }
-
-        public override string AssemblyQualifiedName {
-            get {
-                throw new NotImplementedException();
-            }
-        }
-
-        public override Type BaseType => typeof(object);
-        public override string FullName => null;
 
         public override Guid GUID {
             get {
@@ -41,18 +40,12 @@ namespace Cilin.Internal.Reflection {
             }
         }
 
-        public override string Name => _name;
+        public override string Name => _genericDefinition.Name;
 
         public override string Namespace {
             get {
                 throw new NotImplementedException();
             }
-        }
-
-        public override Type UnderlyingSystemType => this;
-
-        public override ConstructorInfo[] GetConstructors(BindingFlags bindingAttr) {
-            throw new NotImplementedException();
         }
 
         public override object[] GetCustomAttributes(bool inherit) {
@@ -83,13 +76,9 @@ namespace Cilin.Internal.Reflection {
             throw new NotImplementedException();
         }
 
-        public override Type[] GetGenericParameterConstraints() => EmptyTypes;
+        public override Type[] GetGenericArguments() => _genericArguments;
 
         public override Type GetInterface(string name, bool ignoreCase) {
-            throw new NotImplementedException();
-        }
-
-        public override Type[] GetInterfaces() {
             throw new NotImplementedException();
         }
 
@@ -121,7 +110,7 @@ namespace Cilin.Internal.Reflection {
             throw new NotImplementedException();
         }
 
-        protected override TypeAttributes GetAttributeFlagsImpl() => TypeAttributes.Public;
+        protected override TypeAttributes GetAttributeFlagsImpl() => _genericDefinition.Attributes;
 
         protected override ConstructorInfo GetConstructorImpl(BindingFlags bindingAttr, Binder binder, CallingConventions callConvention, Type[] types, ParameterModifier[] modifiers) {
             throw new NotImplementedException();
@@ -149,7 +138,7 @@ namespace Cilin.Internal.Reflection {
             throw new NotImplementedException();
         }
 
-        public override bool IsGenericParameter => true;
+        public override bool IsConstructedGenericType => true;
 
         protected override bool IsPointerImpl() {
             throw new NotImplementedException();
@@ -158,5 +147,22 @@ namespace Cilin.Internal.Reflection {
         protected override bool IsPrimitiveImpl() {
             throw new NotImplementedException();
         }
+
+        protected override string GetFullName() {
+            var builder = new StringBuilder();
+            builder.Append(_genericDefinition.FullName);
+            if (_genericArguments.Length == 0)
+                return builder.ToString();
+            builder.Append("[[")
+                    .Append(_genericArguments[0].AssemblyQualifiedName);
+
+            for (var i = 1; i < _genericArguments.Length; i++) {
+                builder.Append("],[")
+                        .Append(_genericArguments[i].AssemblyQualifiedName);
+            }
+            builder.Append("]]");
+            return builder.ToString();
+        }
+
     }
 }

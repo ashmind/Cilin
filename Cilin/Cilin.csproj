@@ -71,6 +71,7 @@
     <Compile Include="Internal\Handlers\CxxHandler.cs" />
     <Compile Include="Internal\Handlers\IsinstHandler.cs" />
     <Compile Include="Internal\Handlers\LdftnHandler.cs" />
+    <Compile Include="Internal\Handlers\LdtokenHandler.cs" />
     <Compile Include="Internal\Handlers\PopHandler.cs" />
     <Compile Include="Internal\MemberReferenceEqualityComparer.cs" />
     <Compile Include="Internal\MethodInvoker.cs" />
@@ -78,11 +79,14 @@
     <Compile Include="Internal\Reflection\ErasedWrapperType.cs" />
     <Compile Include="Internal\Reflection\GenericDetails.cs" />
     <Compile Include="Internal\Reflection\GenericParameterType.cs" />
-    <Compile Include="Internal\Reflection\INonRuntimeType.cs" />
+    <Compile Include="Internal\Reflection\InterpretedDefinitionType.cs" />
+    <Compile Include="Internal\Reflection\NonRuntimeType.cs" />
     <Compile Include="Internal\Reflection\IInterpretedMethodBase.cs" />
+    <Compile Include="Internal\Reflection\InterpretedGenericPathType.cs" />
     <Compile Include="Internal\Reflection\Invoke.cs" />
+    <Compile Include="Internal\Reflection\NonRuntimeHandle.cs" />
     <Compile Include="Internal\State\ICustomInvoker.cs" />
-    <Compile Include="Internal\State\MethodPointerWrapper.cs" />
+    <Compile Include="Internal\Reflection\MethodPointerWrapper.cs" />
     <Compile Include="Internal\Reflection\LazyMember.cs" />
     <Compile Include="Internal\State\BaseData.cs" />
     <Compile Include="Internal\Empty.cs" />

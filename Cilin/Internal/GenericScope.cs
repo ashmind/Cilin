@@ -33,7 +33,7 @@ namespace Cilin.Internal {
 
             _map = map;
         }
-        
+
         public Type Resolve(GenericParameter parameter) {
             foreach (var entry in _map) {
                 var entryOwner = entry.ParameterOwner;

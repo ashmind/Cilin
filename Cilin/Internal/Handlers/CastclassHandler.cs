@@ -19,14 +19,7 @@ namespace Cilin.Internal.Handlers {
             if (!type.IsInstanceOfType(instance))
                 throw new InvalidCastException($"Specified cast is not valid (instance: {instance}, type: {type}).");
 
-            context.Stack.Push(Cast(instance, type));
-        }
-
-        private object Cast(object instance, Type type) {
-            if (TypeSupport.GetTypeOf(instance) == type)
-                return instance;
-
-            return new ObjectTypeOverride(ObjectWrapper.UnwrapIfRequired(instance), type);
+            context.Stack.Push(instance);
         }
     }
 }
