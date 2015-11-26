@@ -35,44 +35,32 @@ namespace Cilin {
 
         public object InterpretCall(IReadOnlyList<Type> declaringTypeArguments, MethodDefinition method, IReadOnlyList<Type> typeArguments, object target, IReadOnlyList<object> arguments) {
             ValidateCall(method, declaringTypeArguments, typeArguments);
-            var genericTypeScope = new GenericScope(
-                method.DeclaringType.GenericParameters,
-                declaringTypeArguments,
-                null
-            );
-            var genericMethodScope = new GenericScope(
-                method.GenericParameters,
-                typeArguments,
-                genericTypeScope
-            );
+            var genericScope = GenericScope.None
+                .With(method.DeclaringType.GenericParameters, declaringTypeArguments)
+                .With(method.GenericParameters, typeArguments);
 
-            return InterpretCall(genericMethodScope, method, target, arguments);
+            return InterpretCall(genericScope, method, target, arguments);
         }
 
         public object InterpretCall(IReadOnlyList<TypeReference> declaringTypeArguments, MethodDefinition method, IReadOnlyList<TypeReference> typeArguments, object target, IReadOnlyList<object> arguments) {
             ValidateCall(method, declaringTypeArguments, typeArguments);
-            var genericTypeScope = new GenericScope(
-                method.DeclaringType.GenericParameters,
-                declaringTypeArguments.Select(a => _resolver.Type(a, null)),
-                null
-            );
-            var genericMethodScope = new GenericScope(
-                method.GenericParameters,
-                typeArguments.Select(a => _resolver.Type(a, genericTypeScope)),
-                genericTypeScope
-            );
+            var genericTypeScope = GenericScope.None
+                .With(method.DeclaringType.GenericParameters, declaringTypeArguments.Select(a => _resolver.Type(a, GenericScope.None)));            
+            var genericScope = genericTypeScope.With(method.GenericParameters, typeArguments.Select(a => _resolver.Type(a, genericTypeScope)));
 
-            return InterpretCall(genericMethodScope, method, target, arguments);
+            return InterpretCall(genericScope, method, target, arguments);
         }
 
         private object InterpretCall(GenericScope genericScope, MethodDefinition method, object target, IReadOnlyList<object> arguments) {
             var context = new CilHandlerContext(genericScope, method, target, arguments ?? Empty<object>.Array, _resolver, _invoker);
             var instruction = method.Body.Instructions[0];
+            var returnType = _resolver.Type(method.ReturnType, genericScope);
+
             while (instruction != null) {
                 if (instruction.OpCode == OpCodes.Ret) {
                     var result = (object)null;
-                    if (method.ReturnType.FullName != "System.Void")
-                        result = TypeSupport.Convert(context.Stack.Pop(), context.Resolver.Type(method.ReturnType, context.GenericScope));
+                    if (returnType != typeof(void))
+                        result = TypeSupport.Convert(context.Stack.Pop(), returnType);
 
                     if (context.Stack.Count > 0)
                         throw new Exception($"Unbalanced stack on return: {context.Stack.Count} extra items.");

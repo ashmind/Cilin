@@ -6,36 +6,26 @@ using System.Text;
 using System.Threading.Tasks;
 
 namespace Cilin.Internal.Reflection {
-    public abstract class LazyMember {
-        public LazyMember(string name, bool isStatic, bool isPublic) {
+    public class LazyMember<TMemberInfo> : ILazyMember<TMemberInfo>
+        where TMemberInfo : MemberInfo
+    {
+        private readonly Lazy<TMemberInfo> _info;
+
+        public LazyMember(string name, bool isStatic, bool isPublic, Func<TMemberInfo> resolve) {
             Name = name;
             IsStatic = isStatic;
             IsPublic = isPublic;
+            MemberType = GetMemberType();
+            _info = new Lazy<TMemberInfo>(resolve);
         }
 
         public string Name { get; }
         public bool IsStatic { get; }
         public bool IsPublic { get; }
-        public abstract MemberInfo InfoUntyped { get; }
-        public abstract MemberTypes GetMemberType();
-
-        public override string ToString() => $"Lazy<{GetMemberType()} {Name}>";
-    }
-
-    public class LazyMember<TMemberInfo> : LazyMember 
-        where TMemberInfo : MemberInfo
-    {
-        private readonly Lazy<TMemberInfo> _info;
-
-        public LazyMember(string name, bool isStatic, bool isPublic, Func<TMemberInfo> resolve)
-            : base(name, isStatic, isPublic)
-        {
-            _info = new Lazy<TMemberInfo>(resolve);
-        }
-
+        public MemberTypes MemberType { get; }
         public TMemberInfo Info => _info.Value;
-        public override MemberInfo InfoUntyped => Info;
-        public override MemberTypes GetMemberType() {
+
+        public MemberTypes GetMemberType() {
             if (typeof(TMemberInfo) == typeof(Type))
                 return MemberTypes.NestedType;
 
@@ -57,5 +47,7 @@ namespace Cilin.Internal.Reflection {
             // not accessible
             return (MemberTypes)(-1);
         }
+
+        public override string ToString() => $"Lazy<{GetMemberType()} {Name}>";
     }
 }

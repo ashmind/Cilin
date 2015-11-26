@@ -6,7 +6,7 @@ using System.Threading.Tasks;
 using Mono.Cecil.Cil;
 
 namespace Cilin.Internal {
-    public class BrHandler : ICilHandler {
+    public class BranchHandler : ICilHandler {
         public IEnumerable<OpCode> GetOpCodes() {
             yield return OpCodes.Br;
             yield return OpCodes.Br_S;

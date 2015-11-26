@@ -15,7 +15,7 @@ namespace Cilin.Internal.Reflection {
 
         private readonly Lazy<Type> _baseType;
         private readonly Lazy<Type[]> _interfaces;
-        private readonly Lazy<IReadOnlyCollection<LazyMember>> _members;
+        private readonly Lazy<IReadOnlyCollection<ILazyMember<MemberInfo>>> _members;
         private readonly Lazy<IReadOnlyDictionary<Type, InterfaceMapping>> _interfaceMaps;
 
         private Lazy<string> _fullName;
@@ -26,11 +26,11 @@ namespace Cilin.Internal.Reflection {
         public InterpretedType(
             Lazy<Type> baseType,
             Lazy<Type[]> interfaces,
-            Func<Type, IReadOnlyCollection<LazyMember>> getMembers
+            Func<Type, IReadOnlyCollection<ILazyMember<MemberInfo>>> getMembers
         ) {
             _baseType = baseType;
             _interfaces = interfaces;
-            _members = new Lazy<IReadOnlyCollection<LazyMember>>(() => getMembers(this));
+            _members = new Lazy<IReadOnlyCollection<ILazyMember<MemberInfo>>>(() => getMembers(this));
 
             _fullName = new Lazy<string>(GetFullName);
             _assemblyQualifiedName = new Lazy<string>(GetAssemblyQualifiedName);
@@ -70,8 +70,11 @@ namespace Cilin.Internal.Reflection {
             return mapping;
         }
         public override ConstructorInfo[] GetConstructors(BindingFlags bindingAttr) => GetMembers<ConstructorInfo>(bindingAttr);
+        public override MemberInfo[] GetMembers(BindingFlags bindingAttr) => GetMembers<MemberInfo>(bindingAttr);
         public override MethodInfo[] GetMethods(BindingFlags bindingAttr) => GetMembers<MethodInfo>(bindingAttr);
-        public IReadOnlyCollection<LazyMember> GetLazyMembers() => _members.Value;
+        public IReadOnlyCollection<ILazyMember<MemberInfo>> GetLazyMembers() => _members.Value;
+
+        public override Type GetNestedType(string name, BindingFlags bindingAttr) => GetMember<Type>(name, bindingAttr);
 
         public override MemberInfo[] FindMembers(MemberTypes memberType, BindingFlags bindingAttr, MemberFilter filter, object filterCriteria) {
             if (filter != FilterName)
@@ -85,17 +88,30 @@ namespace Cilin.Internal.Reflection {
                 if (!MemberMatches(member, bindingAttr))
                     continue;
 
-                if ((memberType & member.GetMemberType()) == 0)
+                if ((memberType & member.MemberType) == 0)
                     continue;
 
-                results.Add(member.InfoUntyped);
+                results.Add(member.Info);
             }
 
             return results.ToArray();
         }
 
+        private T GetMember<T>(string name, BindingFlags bindingAttr)
+            where T : MemberInfo 
+        {
+            return EnumerateMembers<T>(bindingAttr)
+                .SingleOrDefault(m => m.Name == name);
+        }
+
         private T[] GetMembers<T>(BindingFlags bindingAttr)
-            where T : MemberInfo
+            where T : MemberInfo 
+        {
+            return EnumerateMembers<T>(bindingAttr).ToArray();
+        }
+
+        private IEnumerable<T> EnumerateMembers<T>(BindingFlags bindingAttr)
+            where T : MemberInfo 
         {
             return _members.Value
                 .OfType<LazyMember<T>>()
@@ -104,7 +120,7 @@ namespace Cilin.Internal.Reflection {
                 .ToArray();
         }
 
-        private bool MemberMatches(LazyMember member, BindingFlags bindingAttr) {
+        private bool MemberMatches(ILazyMember<MemberInfo> member, BindingFlags bindingAttr) {
             var unsupported = BindingFlags.DeclaredOnly
                             | BindingFlags.ExactBinding
                             | BindingFlags.FlattenHierarchy

@@ -13,7 +13,8 @@ namespace Cilin.Internal.Reflection {
 
         private readonly Type _elementType;
 
-        public InterpretedArrayType(Type elementType, Lazy<Type[]> interfaces, Func<Type, IReadOnlyCollection<LazyMember>> getMembers) : base(LazyArrayType, interfaces, getMembers) {
+        public InterpretedArrayType(Type elementType, Lazy<Type[]> interfaces, Func<Type, IReadOnlyCollection<ILazyMember<MemberInfo>>> getMembers)
+            : base(LazyArrayType, interfaces, getMembers) {
             _elementType = elementType;
             Name = elementType.Name + "[]";
         }
@@ -52,9 +53,7 @@ namespace Cilin.Internal.Reflection {
             throw new NotImplementedException();
         }
 
-        public override Type GetElementType() {
-            throw new NotImplementedException();
-        }
+        public override Type GetElementType() => _elementType;
 
         public override EventInfo GetEvent(string name, BindingFlags bindingAttr) {
             throw new NotImplementedException();
@@ -100,17 +99,14 @@ namespace Cilin.Internal.Reflection {
             throw new NotImplementedException();
         }
 
-        protected override TypeAttributes GetAttributeFlagsImpl() {
-            throw new NotImplementedException();
-        }
+        protected override TypeAttributes GetAttributeFlagsImpl() =>
+            TypeAttributes.AutoLayout | TypeAttributes.AnsiClass | TypeAttributes.Class | TypeAttributes.Public | TypeAttributes.Sealed | TypeAttributes.Serializable;
 
         protected override ConstructorInfo GetConstructorImpl(BindingFlags bindingAttr, Binder binder, CallingConventions callConvention, Type[] types, ParameterModifier[] modifiers) {
             throw new NotImplementedException();
         }
 
-        protected override string GetFullName() {
-            throw new NotImplementedException();
-        }
+        protected override string GetFullName() => _elementType.FullName + "[]";
 
         protected override MethodInfo GetMethodImpl(string name, BindingFlags bindingAttr, Binder binder, CallingConventions callConvention, Type[] types, ParameterModifier[] modifiers) {
             throw new NotImplementedException();

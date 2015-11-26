@@ -8,13 +8,18 @@ using Mono.Cecil;
 
 namespace Cilin.Internal {
     public class GenericScope {
+        public static GenericScope None { get; } = new GenericScope(Empty<GenericMap>.Array);
+
         private readonly IReadOnlyCollection<GenericMap> _map;
         private readonly GenericScope _parent;
 
-        public GenericScope(IEnumerable<GenericParameter> parameters, IEnumerable<Type> arguments, GenericScope parent = null) {
+        private GenericScope(IReadOnlyCollection<GenericMap> map, GenericScope parent = null) {
             _parent = parent;
+            _map = map;
+        }
 
-            var map = new List<GenericMap>();
+        public GenericScope With(IEnumerable<GenericParameter> parameters, IEnumerable<Type> arguments) {
+            List<GenericMap> map = null;
             using (var parametersEnumerator = parameters.GetEnumerator())
             using (var argumentsEnumerator = arguments.GetEnumerator()) {
                 var count = 0;
@@ -24,6 +29,8 @@ namespace Cilin.Internal {
                         throw new ArgumentException($"Expected more than {count} arguments, got {count}.", nameof(arguments));
 
                     var parameter = parametersEnumerator.Current;
+                    if (map == null)
+                        map = new List<GenericMap>();
                     map.Add(new GenericMap(parameter.Owner, parameter.Position, argumentsEnumerator.Current));
                 }
 
@@ -31,7 +38,7 @@ namespace Cilin.Internal {
                     throw new ArgumentException($"Too many arguments: expected {count}.", nameof(arguments));
             }
 
-            _map = map;
+            return map != null ? new GenericScope(map, this) : this;
         }
 
         public Type Resolve(GenericParameter parameter) {

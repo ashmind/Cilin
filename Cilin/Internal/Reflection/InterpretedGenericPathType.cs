@@ -15,7 +15,7 @@ namespace Cilin.Internal.Reflection {
             Type genericDefinition,
             Lazy<Type> baseType,
             Lazy<Type[]> interfaces,
-            Func<Type, IReadOnlyCollection<LazyMember>> getMembers,
+            Func<Type, IReadOnlyCollection<ILazyMember<MemberInfo>>> getMembers,
             Type[] genericArguments
         ) : base(baseType, interfaces, getMembers) {
             _genericDefinition = genericDefinition;
@@ -27,6 +27,8 @@ namespace Cilin.Internal.Reflection {
                 throw new NotImplementedException();
             }
         }
+
+        public override Type[] GenericTypeArguments => _genericArguments;
 
         public override Guid GUID {
             get {
@@ -79,14 +81,6 @@ namespace Cilin.Internal.Reflection {
         public override Type[] GetGenericArguments() => _genericArguments;
 
         public override Type GetInterface(string name, bool ignoreCase) {
-            throw new NotImplementedException();
-        }
-
-        public override MemberInfo[] GetMembers(BindingFlags bindingAttr) {
-            throw new NotImplementedException();
-        }
-
-        public override Type GetNestedType(string name, BindingFlags bindingAttr) {
             throw new NotImplementedException();
         }
 

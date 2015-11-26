@@ -16,7 +16,6 @@ namespace Cilin.Internal.Reflection {
         private readonly string _name;
         private readonly ParameterInfo[] _parameters;
         private readonly MethodAttributes _attributes;
-        private readonly Func<object[], object> _create;
         private readonly MethodInvoker _invoker;
 
         public InterpretedConstructor(
@@ -24,7 +23,6 @@ namespace Cilin.Internal.Reflection {
             string name,
             ParameterInfo[] parameters,
             MethodAttributes attributes,
-            Func<object[], object> create,
             MethodInvoker invoker,
             object invokableDefinition
         ) {
@@ -32,7 +30,6 @@ namespace Cilin.Internal.Reflection {
             _name = name;
             _parameters = parameters;
             _attributes = attributes;
-            _create = create;
             _invoker = invoker;
             InvokableDefinition = invokableDefinition;
         }
@@ -70,15 +67,11 @@ namespace Cilin.Internal.Reflection {
 
         public override ParameterInfo[] GetParameters() => _parameters;
 
-        public override object Invoke(BindingFlags invokeAttr, Binder binder, object[] parameters, CultureInfo culture) {
-            var instance = !IsStatic ? _create(parameters) : null;
-            Invoke(instance, parameters);
-            return instance;
-        }
+        public override object Invoke(BindingFlags invokeAttr, Binder binder, object[] parameters, CultureInfo culture)
+            => _invoker.Invoke(this, null, parameters, invokeAttr, binder, culture);
 
-        public override object Invoke(object obj, BindingFlags invokeAttr, Binder binder, object[] parameters, CultureInfo culture) {
-            return _invoker.Invoke(this, obj, parameters, invokeAttr, binder, culture);
-        }
+        public override object Invoke(object obj, BindingFlags invokeAttr, Binder binder, object[] parameters, CultureInfo culture)
+            => _invoker.Invoke(this, obj, parameters, invokeAttr, binder, culture);
 
         public override bool IsDefined(Type attributeType, bool inherit) {
             throw new NotImplementedException();

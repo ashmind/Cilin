@@ -12,6 +12,8 @@ using Mono.Cecil;
 namespace Cilin.Internal {
     public class MethodInvoker {
         private static readonly ConstructorInfo ObjectConstructor = typeof(object).GetConstructors().Single();
+        private static readonly MethodInfo TypeGetTypeFromHandle = typeof(Type).GetMethod(nameof(Type.GetTypeFromHandle));
+
         private readonly Interpreter _interpreter;
 
         public MethodInvoker(Interpreter interpreter) {
@@ -31,20 +33,28 @@ namespace Cilin.Internal {
             if (method.IsConstructor && !method.IsStatic && (target == null))
                 return InvokeConstructorForNewObject((ConstructorInfo)method, arguments);
 
-            if (method == ObjectConstructor)
-                return null;
+            object result;
+            if (TryInvokeSpecialMethod(method, arguments, out result))
+                return result;
 
             if (!method.IsStatic) {
                 if (target == null)
-                    throw new NullReferenceException($"Attempted to call non-static method {method.Name} on null reference.");
+                    throw new NullReferenceException($"Attempted to call instance method {method.Name} on null reference.");
 
                 var custom = target as ICustomInvoker;
                 if (custom != null)
                     return custom.Invoke(method, arguments, invokeAttr, binder, culture);
             }
+            
+            if (!(method is IInterpretedMethodBase)) {
+                var unwrapped = ObjectWrapper.UnwrapIfRequired(target);
+                if (!(unwrapped is INonRuntimeObject)) {
+                    if (method.DeclaringType.IsInterface && !unwrapped.GetType().IsArray)
+                        method = GetMatchingMethod(unwrapped.GetType(), (MethodInfo)method);
 
-            if (!(method is IInterpretedMethodBase) && !(target is INonRuntimeObject))
-                return method.Invoke(target, invokeAttr, binder, arguments, culture);
+                    return method.Invoke(unwrapped, invokeAttr, binder, arguments, culture);
+                }
+            }
 
             if (!method.IsStatic && !method.IsConstructor) {
                 var targetType = TypeSupport.GetTypeOf(target);
@@ -79,6 +89,24 @@ namespace Cilin.Internal {
             }
 
             instance = null;
+            return false;
+        }
+
+        private bool TryInvokeSpecialMethod(MethodBase method, object[] arguments, out object result) {
+            if (method == ObjectConstructor) {
+                result = null;
+                return true;
+            }
+
+            if (method == TypeGetTypeFromHandle) {
+                var nonRuntime = arguments[0] as NonRuntimeHandle;
+                if (nonRuntime != null) {
+                    result = (Type)nonRuntime.Member;
+                    return true;
+                }
+            }
+
+            result = null;
             return false;
         }
 

@@ -141,9 +141,13 @@ namespace Cilin.Internal {
         }
 
         public static object CreateArray(Type arrayType, int length) {
-            var erased = arrayType as ErasedWrapperType;
-            if (erased != null)
-                return new ObjectTypeOverride(Array.CreateInstance(erased.RuntimeType.GetElementType(), length), erased.FullType);
+            //var erased = arrayType as ErasedWrapperType;
+            //if (erased != null)
+            //return new ObjectTypeOverride(Array.CreateInstance(erased.RuntimeType.GetElementType(), length), erased.FullType);
+
+            var nonRuntimeType = arrayType as NonRuntimeType;
+            if (nonRuntimeType != null)
+                return new CilinArray(length, (InterpretedArrayType)nonRuntimeType);
 
             return Array.CreateInstance(arrayType.GetElementType(), length);
         }

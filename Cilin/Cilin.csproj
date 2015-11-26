@@ -40,6 +40,10 @@
       <HintPath>..\packages\AshMind.Extensions.1.7.2\lib\net45\AshMind.Extensions.dll</HintPath>
       <Private>True</Private>
     </Reference>
+    <Reference Include="InfoOf, Version=1.1.0.0, Culture=neutral, processorArchitecture=MSIL">
+      <HintPath>..\packages\InfoOf.1.1.0\lib\net45\InfoOf.dll</HintPath>
+      <Private>True</Private>
+    </Reference>
     <Reference Include="Mono.Cecil, Version=0.9.6.0, Culture=neutral, PublicKeyToken=0738eb9f132ed756, processorArchitecture=MSIL">
       <HintPath>..\packages\Mono.Cecil.0.9.6.1\lib\net45\Mono.Cecil.dll</HintPath>
       <Private>True</Private>
@@ -67,9 +71,11 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="Internal\GenericScope.cs" />
+    <Compile Include="Internal\Handlers\LeaveHandler.cs" />
     <Compile Include="Internal\Handlers\CastclassHandler.cs" />
     <Compile Include="Internal\Handlers\CxxHandler.cs" />
     <Compile Include="Internal\Handlers\IsinstHandler.cs" />
+    <Compile Include="Internal\Handlers\LdelemHandler.cs" />
     <Compile Include="Internal\Handlers\LdftnHandler.cs" />
     <Compile Include="Internal\Handlers\LdtokenHandler.cs" />
     <Compile Include="Internal\Handlers\PopHandler.cs" />
@@ -80,6 +86,7 @@
     <Compile Include="Internal\Reflection\ErasedWrapperType.cs" />
     <Compile Include="Internal\Reflection\GenericDetails.cs" />
     <Compile Include="Internal\Reflection\GenericParameterType.cs" />
+    <Compile Include="Internal\Reflection\ILazyMember.cs" />
     <Compile Include="Internal\Reflection\InterpretedArrayType.cs" />
     <Compile Include="Internal\Reflection\InterpretedDefinitionType.cs" />
     <Compile Include="Internal\Reflection\NonRuntimeType.cs" />
@@ -87,6 +94,8 @@
     <Compile Include="Internal\Reflection\InterpretedGenericPathType.cs" />
     <Compile Include="Internal\Reflection\Invoke.cs" />
     <Compile Include="Internal\Reflection\NonRuntimeHandle.cs" />
+    <Compile Include="Internal\State\CilinArray.cs" />
+    <Compile Include="Internal\State\CilinArrayIterator.cs" />
     <Compile Include="Internal\State\ICustomInvoker.cs" />
     <Compile Include="Internal\Reflection\NonRuntimeMethodPointer.cs" />
     <Compile Include="Internal\Reflection\LazyMember.cs" />

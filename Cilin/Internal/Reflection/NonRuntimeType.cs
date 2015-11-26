@@ -15,7 +15,7 @@ namespace Cilin.Internal.Reflection {
         public new NonRuntimeHandle TypeHandle {
             get {
                 if (_handle == null)
-                    _handle = new NonRuntimeHandle(this);
+                    _handle = new NonRuntimeHandle(this, typeof(RuntimeTypeHandle));
 
                 return _handle;
             }

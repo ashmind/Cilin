@@ -20,12 +20,7 @@ namespace Cilin.Internal.Reflection {
             }
         }
 
-        public override string AssemblyQualifiedName {
-            get {
-                throw new NotImplementedException();
-            }
-        }
-
+        public override string AssemblyQualifiedName => null;
         public override Type BaseType => typeof(object);
         public override string FullName => null;
 
