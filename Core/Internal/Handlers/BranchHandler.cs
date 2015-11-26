@@ -18,6 +18,8 @@ namespace Cilin.Core.Internal {
 
             yield return OpCodes.Bne_Un_S;
             yield return OpCodes.Beq_S;
+            yield return OpCodes.Blt_S;
+            yield return OpCodes.Ble_S;
         }
 
         public void Handle(Instruction instruction, CilHandlerContext context) {
@@ -42,15 +44,20 @@ namespace Cilin.Core.Internal {
                 case Code.Brfalse_S:
                     return !TypeSupport.Convert<bool>(context.Stack.Pop());
 
-                case Code.Beq_S:
-                    return Primitives.Equal(context.Stack);
-
-                case Code.Bne_Un_S:
-                    return Primitives.NotEqual(context.Stack);
+                case Code.Beq_S: return IsBinaryConditionTrue(Primitives.Equal, context);
+                case Code.Bne_Un_S: return IsBinaryConditionTrue(Primitives.NotEqual, context);
+                case Code.Blt_S: return IsBinaryConditionTrue(Primitives.IsLessThan, context);
+                case Code.Ble_S: return IsBinaryConditionTrue(Primitives.IsLessThanOrEqual, context);
 
                 default:
                     throw new NotImplementedException();
             }
+        }
+
+        private bool IsBinaryConditionTrue(Func<object, object, bool> isTrue, CilHandlerContext context) {
+            var right = context.Stack.Pop();
+            var left = context.Stack.Pop();
+            return isTrue(left, right);
         }
     }
 }

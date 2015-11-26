@@ -12,7 +12,7 @@ namespace Cilin.Core.Internal.Handlers {
         }
 
         public void Handle(Instruction instruction, CilHandlerContext context) {
-            var length = (int)context.Stack.Pop();
+            var length = (int)Primitives.Convert(context.Stack.Pop(), typeof(int));
             var arrayType = context.Resolver.Type(new ArrayType((TypeReference)instruction.Operand), context.GenericScope);
 
             context.Stack.Push(TypeSupport.CreateArray(arrayType, length));

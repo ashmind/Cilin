@@ -6,13 +6,7 @@ using System.Threading.Tasks;
 
 namespace Cilin.Core.Internal {
     public static class Primitives {
-        public static bool NotEqual(Stack<object> stack) => !Equal(stack);
-
-        public static bool Equal(Stack<object> stack) {
-            var right = stack.Pop();
-            var left = stack.Pop();
-            return Equal(left, right);
-        }
+        public static bool NotEqual(object left, object right) => !Equal(left, right);
 
         public static bool Equal(object left, object right) {
             return object.Equals(left, right);
@@ -43,11 +37,24 @@ namespace Cilin.Core.Internal {
                     return (int)left < (sbyte)right;
             }
 
-            throw new NotImplementedException();
+            if (left is char) {
+                if (right is sbyte)
+                    return (char)left < (sbyte)right;
+            }
+
+            throw new NotImplementedException($"IsLessThan is not implemented for {left.GetType()} and {right.GetType()}.");
+        }
+
+        public static bool IsLessThanOrEqual(object left, object right) {
+            return Equals(left, right) || IsLessThan(left, right);
         }
 
         public static object Add(object left, object right) {
             return (int)left + (int)right;
+        }
+
+        public static object Subtract(object left, object right) {
+            return (int)left - (int)right;
         }
 
         public static object Divide(object left, object right) {
@@ -89,6 +96,9 @@ namespace Cilin.Core.Internal {
             }
 
             if (targetType == typeof(IntPtr)) {
+                if (value is char)
+                    return (IntPtr)(char)value;
+
                 if (value is sbyte)
                     return (IntPtr)(sbyte)value;
 
@@ -112,6 +122,11 @@ namespace Cilin.Core.Internal {
 
                 if (value is ulong)
                     return (IntPtr)(ulong)value;
+            }
+
+            if (targetType == typeof(sbyte)) {
+                if (value is int)
+                    return (sbyte)(int)value;
             }
 
             throw new NotImplementedException($"Conversion from {value.GetType()} (value {value}) to type {targetType} is not implemented.");

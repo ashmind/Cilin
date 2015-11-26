@@ -37,6 +37,9 @@ namespace Cilin.Core.Internal {
                 return value; // we are assuming it's convertible as IL should be checked for us
             }
 
+            if (IsAssignableFrom(requiredType, value.GetType()))
+                return value;
+
             var typeOfValue = GetTypeOf(value);
             if (IsAssignableFrom(requiredType, typeOfValue))
                 return value;

@@ -29,17 +29,14 @@ namespace Cilin.Core.Internal {
         }
 
         public void Handle(Instruction instruction, CilHandlerContext context) {
-            var type = TypeMap.GetValueOrDefault(instruction.OpCode) ?? (
-                instruction.OpCode == OpCodes.Stelem_Any
-                    ? context.Resolver.Type((TypeReference)instruction.Operand, context.GenericScope)
-                    : typeof(object)
-            );
-
-            var value = TypeSupport.Convert(context.Stack.Pop(), type);
+            var value = context.Stack.Pop();
             var index = TypeSupport.Convert<IntPtr>(context.Stack.Pop());
             var array = (Array)ObjectWrapper.UnwrapIfRequired(context.Stack.Pop());
 
-            array.SetValue(value, index.ToInt64());
+            array.SetValue(
+                TypeSupport.Convert(value, array.GetType().GetElementType()),
+                index.ToInt64()
+            );
         }
     }
 }

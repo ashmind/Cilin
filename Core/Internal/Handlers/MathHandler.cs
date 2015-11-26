@@ -11,6 +11,7 @@ namespace Cilin.Core.Internal {
             yield return OpCodes.Add;
             yield return OpCodes.Div;
             yield return OpCodes.Mul;
+            yield return OpCodes.Sub;
         }
 
         public void Handle(Instruction instruction, CilHandlerContext context) {
@@ -24,6 +25,7 @@ namespace Cilin.Core.Internal {
                 case Code.Add: return Primitives.Add(left, right);
                 case Code.Div: return Primitives.Divide(left, right);
                 case Code.Mul: return Primitives.Multiply(left, right);
+                case Code.Sub: return Primitives.Subtract(left, right);
                 default: throw new NotImplementedException();
             }
         }
