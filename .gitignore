@@ -2,5 +2,5 @@
 .vs/
 bin/
 obj/
-packages/
+\#packages/
 *.user
